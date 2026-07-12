@@ -188,3 +188,28 @@ The backend must enforce all validation rules (prerequisites, capacity, curricul
 - [ ] Programmatic: Backend tests pass demonstrating schedule queries correctly filter by term, program, curriculum, year level, section, and active status.
 - [ ] Programmatic: Backend tests pass demonstrating prerequisite, capacity, curriculum, term, and meeting-conflict validations are strictly enforced.
 
+## Follow-up — 2026-07-12T11:13:59Z
+
+Analyze the frontend, backend, and database of the College Information System to determine the required fields for student enrollment, and develop an automated script/process to enroll 19 specific applicant students (4 first-year, and 5 each for 2nd, 3rd, and 4th year) for the first semester.
+
+Working directory: ~/teamwork_projects/cis_enrollment_migration
+Integrity mode: development
+
+## Requirements
+
+### R1. Schema Analysis
+Analyze the frontend forms, backend endpoints, and database schema to determine the exact fields and relationships required to successfully enroll a student into the first semester.
+
+### R2. Migration Automation
+Develop and execute an automated solution to enroll 19 applicant students (4 first-year, and 5 each for 2nd, 3rd, and 4th year) into the first semester. If specific applicant data does not exist, generate realistic mock data to fulfill the requirement.
+
+## Acceptance Criteria
+
+### Schema Analysis Report
+- [ ] A generated markdown report clearly lists the required database tables, fields, and API endpoints involved in student enrollment.
+
+### Successful Enrollment Verification
+- [ ] A verification script or SQL query proves that exactly 19 new student records exist for the first semester.
+- [ ] The verification script proves the distribution is exactly: 4 first-year, 5 second-year, 5 third-year, and 5 fourth-year students.
+
+
