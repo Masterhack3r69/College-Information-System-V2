@@ -2,6 +2,7 @@ package com.school.sis.setup.service;
 
 import com.school.sis.audit.AuditModule;
 import com.school.sis.audit.service.AuditService;
+import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
 import com.school.sis.setup.dto.CourseRequest;
@@ -43,6 +44,9 @@ public class CourseService {
 
     @Transactional
     public CourseResponse create(CourseRequest request) {
+        if (courseRepository.existsByCourseCodeIgnoreCase(request.courseCode())) {
+            throw new BusinessRuleException("Course code already exists");
+        }
         Course course = new Course();
         apply(course, request);
         CourseResponse response = toResponse(courseRepository.save(course));
@@ -53,6 +57,9 @@ public class CourseService {
     @Transactional
     public CourseResponse update(UUID id, CourseRequest request) {
         Course course = find(id);
+        if (!course.getCourseCode().equalsIgnoreCase(request.courseCode()) && courseRepository.existsByCourseCodeIgnoreCase(request.courseCode())) {
+            throw new BusinessRuleException("Course code already exists");
+        }
         CourseResponse before = toResponse(course);
         apply(course, request);
         CourseResponse after = toResponse(course);

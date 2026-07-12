@@ -27,6 +27,7 @@ public record AssessmentResponse(
         BigDecimal amountPaid,
         BigDecimal balance,
         AssessmentStatus status,
-        List<AssessmentItemResponse> items
+        List<AssessmentItemResponse> items,
+        List<PaymentResponse> payments
 ) {
 }

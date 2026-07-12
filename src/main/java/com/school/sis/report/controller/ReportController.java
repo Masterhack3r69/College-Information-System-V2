@@ -45,9 +45,15 @@ public class ReportController {
     }
 
     @GetMapping("/assessments/{id}")
-    @PreAuthorize("hasAuthority('REPORT_GENERATE')")
+    @PreAuthorize("hasAnyAuthority('REPORT_GENERATE', 'FINANCE_VIEW')")
     public ResponseEntity<byte[]> assessmentForm(@PathVariable UUID id, @AuthenticationPrincipal SisUserDetails userDetails) {
         return pdf(reportService.assessmentForm(id, userDetails));
+    }
+
+    @GetMapping("/assessment-payments/{id}/receipt")
+    @PreAuthorize("hasAuthority('FINANCE_VIEW')")
+    public ResponseEntity<byte[]> paymentReceipt(@PathVariable UUID id, @AuthenticationPrincipal SisUserDetails userDetails) {
+        return pdf(reportService.paymentReceipt(id, userDetails));
     }
 
     @GetMapping("/classes/{scheduleId}/class-list")

@@ -15,6 +15,8 @@ import com.school.sis.enrollment.repository.EnrollmentSubjectRepository;
 import com.school.sis.fee.entity.Assessment;
 import com.school.sis.fee.entity.AssessmentItem;
 import com.school.sis.fee.repository.AssessmentRepository;
+import com.school.sis.fee.entity.AssessmentPayment;
+import com.school.sis.fee.repository.AssessmentPaymentRepository;
 import com.school.sis.grade.entity.AcademicRecord;
 import com.school.sis.grade.entity.Grade;
 import com.school.sis.grade.repository.AcademicRecordRepository;
@@ -51,6 +53,7 @@ public class ReportService {
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentSubjectRepository enrollmentSubjectRepository;
     private final AssessmentRepository assessmentRepository;
+    private final AssessmentPaymentRepository assessmentPaymentRepository;
     private final ClassScheduleRepository classScheduleRepository;
     private final GradeRepository gradeRepository;
     private final GeneratedReportRepository generatedReportRepository;
@@ -66,6 +69,7 @@ public class ReportService {
             EnrollmentRepository enrollmentRepository,
             EnrollmentSubjectRepository enrollmentSubjectRepository,
             AssessmentRepository assessmentRepository,
+            AssessmentPaymentRepository assessmentPaymentRepository,
             ClassScheduleRepository classScheduleRepository,
             GradeRepository gradeRepository,
             GeneratedReportRepository generatedReportRepository,
@@ -80,6 +84,7 @@ public class ReportService {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentSubjectRepository = enrollmentSubjectRepository;
         this.assessmentRepository = assessmentRepository;
+        this.assessmentPaymentRepository = assessmentPaymentRepository;
         this.classScheduleRepository = classScheduleRepository;
         this.gradeRepository = gradeRepository;
         this.generatedReportRepository = generatedReportRepository;
@@ -230,6 +235,31 @@ public class ReportService {
                     .toList());
             log("ASSESSMENT_FORM", "Assessment", assessmentId, userDetails);
             return new PdfReport("assessment-" + assessment.getStudent().getStudentNumber() + ".pdf", pdf.finish());
+        }
+    }
+
+    @Transactional
+    public PdfReport paymentReceipt(UUID paymentId, SisUserDetails userDetails) {
+        AssessmentPayment payment = assessmentPaymentRepository.findById(paymentId)
+                .orElseThrow(() -> new NotFoundException("Payment not found"));
+        Assessment assessment = payment.getAssessment();
+        try (PdfReportBuilder pdf = builder(userDetails)) {
+            pdf.start("Official Payment Receipt");
+            studentHeader(pdf, payment.getStudent());
+            pdf.section("Payment");
+            pdf.field("Official Receipt No.", payment.getOfficialReceiptNumber());
+            pdf.field("Date", payment.getPaidAt());
+            pdf.field("School Year", assessment.getSchoolYear().getSchoolYear());
+            pdf.field("Semester", assessment.getSemester().getName());
+            pdf.field("Payment Method", payment.getPaymentMethod());
+            pdf.field("External Reference", payment.getExternalReference());
+            pdf.field("Amount", money(payment.getAmount()));
+            pdf.field("Cashier", payment.getCashier().getFullName());
+            pdf.field("Payment Status", payment.getStatus());
+            pdf.field("Remaining Balance", money(assessment.getBalance()));
+            if (payment.getVoidReason() != null) pdf.field("Void Reason", payment.getVoidReason());
+            log("PAYMENT_RECEIPT", "AssessmentPayment", paymentId, userDetails);
+            return new PdfReport("receipt-" + payment.getOfficialReceiptNumber() + ".pdf", pdf.finish());
         }
     }
 

@@ -9,4 +9,5 @@ import java.util.UUID;
 
 public interface CourseRepository extends JpaRepository<Course, UUID> {
     Page<Course> findByCourseCodeContainingIgnoreCaseOrCourseTitleContainingIgnoreCase(String code, String title, Pageable pageable);
+    boolean existsByCourseCodeIgnoreCase(String courseCode);
 }

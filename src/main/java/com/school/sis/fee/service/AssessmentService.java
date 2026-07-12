@@ -20,6 +20,9 @@ import com.school.sis.fee.entity.AssessmentStatus;
 import com.school.sis.fee.entity.FeeCategory;
 import com.school.sis.fee.entity.FeeRule;
 import com.school.sis.fee.repository.AssessmentRepository;
+import com.school.sis.fee.repository.AssessmentPaymentRepository;
+import com.school.sis.fee.entity.PaymentStatus;
+import com.school.sis.fee.dto.PendingAssessmentEnrollmentResponse;
 import com.school.sis.fee.repository.FeeRuleRepository;
 import com.school.sis.setup.entity.ActiveStatus;
 import com.school.sis.student.entity.Student;
@@ -39,17 +42,20 @@ import java.util.UUID;
 public class AssessmentService {
 
     private final AssessmentRepository assessmentRepository;
+    private final AssessmentPaymentRepository paymentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final FeeRuleRepository feeRuleRepository;
     private final AuditService auditService;
 
     public AssessmentService(
             AssessmentRepository assessmentRepository,
+            AssessmentPaymentRepository paymentRepository,
             EnrollmentRepository enrollmentRepository,
             FeeRuleRepository feeRuleRepository,
             AuditService auditService
     ) {
         this.assessmentRepository = assessmentRepository;
+        this.paymentRepository = paymentRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.feeRuleRepository = feeRuleRepository;
         this.auditService = auditService;
@@ -89,6 +95,36 @@ public class AssessmentService {
         auditService.log("ASSESSMENT_GENERATED", "FEE", "Assessment", saved.getId(), null,
                 Map.of("enrollmentId", enrollment.getId(), "studentId", saved.getStudent().getId(), "totalAssessment", saved.getTotalAssessment()));
         return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PendingAssessmentEnrollmentResponse> pending(String search, UUID schoolYearId, UUID semesterId, UUID programId, Pageable pageable) {
+        Specification<Enrollment> spec = (root, query, cb) -> {
+            var predicate = cb.equal(root.get("status"), EnrollmentStatus.CONFIRMED);
+            var subquery = query.subquery(UUID.class);
+            var assessment = subquery.from(Assessment.class);
+            subquery.select(assessment.get("id")).where(cb.equal(assessment.get("enrollment").get("id"), root.get("id")));
+            predicate = cb.and(predicate, cb.not(cb.exists(subquery)));
+            if (search != null && !search.isBlank()) {
+                String term = "%" + search.toLowerCase(Locale.ROOT) + "%";
+                predicate = cb.and(predicate, cb.or(
+                        cb.like(cb.lower(root.get("student").get("studentNumber")), term),
+                        cb.like(cb.lower(root.get("student").get("firstName")), term),
+                        cb.like(cb.lower(root.get("student").get("lastName")), term)));
+            }
+            if (schoolYearId != null) predicate = cb.and(predicate, cb.equal(root.get("schoolYear").get("id"), schoolYearId));
+            if (semesterId != null) predicate = cb.and(predicate, cb.equal(root.get("semester").get("id"), semesterId));
+            if (programId != null) predicate = cb.and(predicate, cb.equal(root.get("program").get("id"), programId));
+            return predicate;
+        };
+        return PageResponse.from(enrollmentRepository.findAll(spec, pageable).map(enrollment -> {
+            List<EnrollmentSubject> subjects = activeSubjects(enrollment);
+            return new PendingAssessmentEnrollmentResponse(enrollment.getId(), enrollment.getStudent().getId(),
+                    enrollment.getStudent().getStudentNumber(), studentName(enrollment.getStudent()),
+                    enrollment.getProgram().getId(), enrollment.getProgram().getProgramCode(), enrollment.getYearLevel(),
+                    enrollment.getSchoolYear().getId(), enrollment.getSchoolYear().getSchoolYear(),
+                    enrollment.getSemester().getId(), enrollment.getSemester().getName(), totalUnits(subjects), subjects.size());
+        }));
     }
 
     @Transactional
@@ -212,9 +248,8 @@ public class AssessmentService {
     }
 
     private void validateEnrollmentForAssessment(Enrollment enrollment) {
-        if (enrollment.getStatus() == EnrollmentStatus.CANCELLED) {
-            throw new BusinessRuleException("Cancelled enrollments cannot be assessed");
-        }
+        if (enrollment.getStatus() != EnrollmentStatus.CONFIRMED) throw new BusinessRuleException("Only confirmed enrollments can be assessed");
+        if (activeSubjects(enrollment).isEmpty()) throw new BusinessRuleException("Assessment requires at least one enrolled subject");
     }
 
     private Enrollment findEnrollment(UUID id) {
@@ -253,6 +288,13 @@ public class AssessmentService {
                 assessment.getItems().stream()
                         .sorted(Comparator.comparing(AssessmentItem::getDescription))
                         .map(this::toItemResponse)
+                        .toList(),
+                paymentRepository.findByAssessmentIdOrderByPaidAtDesc(assessment.getId()).stream()
+                        .map(payment -> new com.school.sis.fee.dto.PaymentResponse(payment.getId(), assessment.getId(), assessment.getStudent().getId(),
+                                payment.getOfficialReceiptNumber(), payment.getAmount(), payment.getPaymentMethod(), payment.getExternalReference(), payment.getRemarks(),
+                                payment.getPaidAt(), payment.getCashier().getId(), payment.getCashier().getFullName(), payment.getStatus(), payment.getVoidReason(),
+                                payment.getVoidedAt(), payment.getVoidedBy() == null ? null : payment.getVoidedBy().getId(),
+                                payment.getVoidedBy() == null ? null : payment.getVoidedBy().getFullName()))
                         .toList()
         );
     }

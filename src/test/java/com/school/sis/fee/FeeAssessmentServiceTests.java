@@ -21,6 +21,13 @@ import com.school.sis.fee.entity.FeeCategory;
 import com.school.sis.fee.entity.FeeComputationType;
 import com.school.sis.fee.service.AssessmentService;
 import com.school.sis.fee.service.FeeService;
+import com.school.sis.fee.service.PaymentService;
+import com.school.sis.fee.dto.PaymentRequest;
+import com.school.sis.fee.entity.PaymentMethod;
+import com.school.sis.fee.entity.PaymentStatus;
+import com.school.sis.auth.entity.User;
+import com.school.sis.auth.repository.UserRepository;
+import com.school.sis.auth.security.SisUserDetails;
 import com.school.sis.schedule.dto.ScheduleMeetingRequest;
 import com.school.sis.schedule.dto.ScheduleRequest;
 import com.school.sis.schedule.dto.ScheduleResponse;
@@ -79,6 +86,8 @@ class FeeAssessmentServiceTests {
     private final AssessmentService assessmentService;
     private final EnrollmentService enrollmentService;
     private final ScheduleService scheduleService;
+    private final PaymentService paymentService;
+    private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final ProgramRepository programRepository;
     private final CourseRepository courseRepository;
@@ -101,6 +110,7 @@ class FeeAssessmentServiceTests {
     private Semester semester;
     private Section section;
     private Student student;
+    private SisUserDetails cashier;
 
     @Autowired
     FeeAssessmentServiceTests(
@@ -108,6 +118,8 @@ class FeeAssessmentServiceTests {
             AssessmentService assessmentService,
             EnrollmentService enrollmentService,
             ScheduleService scheduleService,
+            PaymentService paymentService,
+            UserRepository userRepository,
             DepartmentRepository departmentRepository,
             ProgramRepository programRepository,
             CourseRepository courseRepository,
@@ -124,6 +136,8 @@ class FeeAssessmentServiceTests {
         this.assessmentService = assessmentService;
         this.enrollmentService = enrollmentService;
         this.scheduleService = scheduleService;
+        this.paymentService = paymentService;
+        this.userRepository = userRepository;
         this.departmentRepository = departmentRepository;
         this.programRepository = programRepository;
         this.courseRepository = courseRepository;
@@ -220,6 +234,14 @@ class FeeAssessmentServiceTests {
         student.setClassification(StudentClassification.REGULAR);
         student.setAcademicStatus(AcademicStatus.REGULAR);
         student = studentRepository.save(student);
+
+        User cashierUser = new User();
+        cashierUser.setUsername("cashier-" + suffix);
+        cashierUser.setEmail("cashier-" + suffix + "@sis.local");
+        cashierUser.setPasswordHash("unused");
+        cashierUser.setFullName("Test Cashier");
+        cashierUser.setActive(true);
+        cashier = new SisUserDetails(userRepository.save(cashierUser));
     }
 
     @Test
@@ -292,13 +314,44 @@ class FeeAssessmentServiceTests {
     void rejectsCancelledEnrollmentAssessment() {
         createFee("MISC-CANCEL", FeeCategory.MISCELLANEOUS, FeeComputationType.FIXED_AMOUNT, "100");
         EnrollmentResponse enrollment = enrollmentWithTwoSubjects();
-        enrollmentService.confirm(enrollment.id());
         EnrollmentResponse cancelled = enrollmentService.cancel(enrollment.id(), "Reason");
 
         assertThat(cancelled.status()).isEqualTo(EnrollmentStatus.CANCELLED);
         assertThatThrownBy(() -> assessmentService.generate(enrollment.id()))
                 .isInstanceOf(BusinessRuleException.class)
-                .hasMessage("Cancelled enrollments cannot be assessed");
+                .hasMessage("Only confirmed enrollments can be assessed");
+    }
+
+    @Test
+    void postsPartialAndFullPaymentsThenVoidsWithoutDeletingHistory() {
+        createFee("PAYMENT", FeeCategory.MISCELLANEOUS, FeeComputationType.FIXED_AMOUNT, "1000");
+        AssessmentResponse assessment = assessmentService.generate(enrollmentWithTwoSubjects().id());
+
+        var first = paymentService.post(assessment.id(), new PaymentRequest("OR-" + UUID.randomUUID(), new BigDecimal("400"), PaymentMethod.CASH, null, null), cashier);
+        AssessmentResponse partial = assessmentService.get(assessment.id());
+        assertThat(partial.status()).isEqualTo(AssessmentStatus.PARTIAL);
+        assertThat(partial.balance()).isEqualByComparingTo("600");
+
+        var second = paymentService.post(assessment.id(), new PaymentRequest("OR-" + UUID.randomUUID(), new BigDecimal("600"), PaymentMethod.E_WALLET, "REF-1", null), cashier);
+        assertThat(assessmentService.get(assessment.id()).status()).isEqualTo(AssessmentStatus.PAID);
+
+        var voided = paymentService.voidPayment(second.id(), "Wrong payment", cashier);
+        assertThat(voided.status()).isEqualTo(PaymentStatus.VOIDED);
+        assertThat(assessmentService.get(assessment.id()).balance()).isEqualByComparingTo("600");
+        assertThat(paymentService.list(assessment.id())).hasSize(2);
+        assertThat(first.status()).isEqualTo(PaymentStatus.POSTED);
+    }
+
+    @Test
+    void rejectsDuplicateReceiptAndOverpayment() {
+        createFee("PAYMENT-VALIDATION", FeeCategory.MISCELLANEOUS, FeeComputationType.FIXED_AMOUNT, "500");
+        AssessmentResponse assessment = assessmentService.generate(enrollmentWithTwoSubjects().id());
+        String receipt = "OR-" + UUID.randomUUID();
+        paymentService.post(assessment.id(), new PaymentRequest(receipt, new BigDecimal("100"), PaymentMethod.CASH, null, null), cashier);
+        assertThatThrownBy(() -> paymentService.post(assessment.id(), new PaymentRequest(receipt, new BigDecimal("100"), PaymentMethod.CASH, null, null), cashier))
+                .isInstanceOf(BusinessRuleException.class).hasMessage("Official receipt number already exists");
+        assertThatThrownBy(() -> paymentService.post(assessment.id(), new PaymentRequest("OR-" + UUID.randomUUID(), new BigDecimal("401"), PaymentMethod.CASH, null, null), cashier))
+                .isInstanceOf(BusinessRuleException.class).hasMessage("Payment cannot exceed the remaining balance");
     }
 
     private EnrollmentResponse enrollmentWithTwoSubjects() {
@@ -306,7 +359,8 @@ class FeeAssessmentServiceTests {
         ScheduleResponse first = schedule(labCourse, roomOne, DayOfWeek.MONDAY, "09:00", "10:00");
         ScheduleResponse second = schedule(lectureCourse, roomTwo, DayOfWeek.TUESDAY, "09:00", "10:00");
         enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(first.id()));
-        return enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(second.id()));
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(second.id()));
+        return enrollmentService.confirm(enrollment.id());
     }
 
     private void createFee(String code, FeeCategory category, FeeComputationType computationType, String amount) {
