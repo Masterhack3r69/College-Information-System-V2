@@ -30,7 +30,7 @@ class PostgresMigrationTests {
     @Test void allMigrationsApplyAndHibernateValidates() {
         Integer count = jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class);
         String latest = jdbc.queryForObject("select version from flyway_schema_history order by installed_rank desc limit 1", String.class);
-        assertThat(count).isEqualTo(8);
-        assertThat(latest).isEqualTo("8");
+        assertThat(count).isEqualTo(12);
+        assertThat(latest).isEqualTo("12");
     }
 }

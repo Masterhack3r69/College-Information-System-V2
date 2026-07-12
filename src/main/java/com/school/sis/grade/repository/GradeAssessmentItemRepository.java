@@ -1,0 +1,1 @@
+package com.school.sis.grade.repository; import com.school.sis.grade.entity.GradeAssessmentItem; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface GradeAssessmentItemRepository extends JpaRepository<GradeAssessmentItem,UUID>{List<GradeAssessmentItem> findByGradebookIdAndArchivedFalseOrderBySortOrderAsc(UUID id);}

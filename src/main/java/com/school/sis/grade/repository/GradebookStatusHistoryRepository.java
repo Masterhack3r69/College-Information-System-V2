@@ -1,0 +1,1 @@
+package com.school.sis.grade.repository; import com.school.sis.grade.entity.GradebookStatusHistory; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface GradebookStatusHistoryRepository extends JpaRepository<GradebookStatusHistory,UUID>{List<GradebookStatusHistory> findByGradebookIdOrderByChangedAtDesc(UUID id);}

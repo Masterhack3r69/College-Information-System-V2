@@ -62,6 +62,15 @@ public class Grade extends AuditableEntity {
     @Column(name = "final_grade")
     private BigDecimal finalGrade;
 
+    @Column(name = "final_percentage")
+    private BigDecimal finalPercentage;
+
+    @Column(name = "midterm_percentage")
+    private BigDecimal midtermPercentage;
+
+    @Column(name = "final_period_percentage")
+    private BigDecimal finalPeriodPercentage;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private GradeRemark remarks = GradeRemark.NO_GRADE;
@@ -116,6 +125,12 @@ public class Grade extends AuditableEntity {
     public void setSemester(Semester semester) { this.semester = semester; }
     public BigDecimal getFinalGrade() { return finalGrade; }
     public void setFinalGrade(BigDecimal finalGrade) { this.finalGrade = finalGrade; }
+    public BigDecimal getFinalPercentage() { return finalPercentage; }
+    public void setFinalPercentage(BigDecimal value) { finalPercentage = value; }
+    public BigDecimal getMidtermPercentage() { return midtermPercentage; }
+    public void setMidtermPercentage(BigDecimal value) { midtermPercentage = value; }
+    public BigDecimal getFinalPeriodPercentage() { return finalPeriodPercentage; }
+    public void setFinalPeriodPercentage(BigDecimal value) { finalPeriodPercentage = value; }
     public GradeRemark getRemarks() { return remarks; }
     public void setRemarks(GradeRemark remarks) { this.remarks = remarks; }
     public GradeStatus getStatus() { return status; }

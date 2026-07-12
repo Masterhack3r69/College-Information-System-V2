@@ -1,0 +1,3 @@
+package com.school.sis.grade.dto;
+import com.school.sis.grade.entity.GradingPeriod; import com.school.sis.setup.entity.ActiveStatus; import jakarta.validation.Valid; import jakarta.validation.constraints.*; import java.math.BigDecimal; import java.util.*;
+public record GradingTemplateRequest(@NotBlank String templateCode,@NotBlank String templateName,@NotNull UUID programId,@NotNull UUID courseId,@NotNull UUID scaleId,@Min(1) int version,@NotNull BigDecimal midtermWeight,@NotNull BigDecimal finalWeight,ActiveStatus status,@NotEmpty @Valid List<Category> categories){public record Category(@NotNull GradingPeriod period,@NotBlank String categoryName,@NotNull BigDecimal weight,@Min(0) int sortOrder){}}

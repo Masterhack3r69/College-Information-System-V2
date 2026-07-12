@@ -1,0 +1,6 @@
+package com.school.sis.grade.entity;
+import com.school.sis.common.audit.AuditableEntity; import com.school.sis.enrollment.entity.EnrollmentSubject; import jakarta.persistence.*; import java.math.BigDecimal; import java.util.UUID;
+@Entity @Table(name="grade_scores") public class GradeScore extends AuditableEntity {
+ @Id private UUID id; @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="item_id") private GradeAssessmentItem item; @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="enrollment_subject_id") private EnrollmentSubject enrollmentSubject; private BigDecimal score; @Enumerated(EnumType.STRING) @Column(nullable=false) private ScoreStatus status=ScoreStatus.PENDING;
+ @PrePersist void pre(){if(id==null)id=UUID.randomUUID();} public UUID getId(){return id;} public GradeAssessmentItem getItem(){return item;} public void setItem(GradeAssessmentItem v){item=v;} public EnrollmentSubject getEnrollmentSubject(){return enrollmentSubject;} public void setEnrollmentSubject(EnrollmentSubject v){enrollmentSubject=v;} public BigDecimal getScore(){return score;} public void setScore(BigDecimal v){score=v;} public ScoreStatus getStatus(){return status;} public void setStatus(ScoreStatus v){status=v;}
+}

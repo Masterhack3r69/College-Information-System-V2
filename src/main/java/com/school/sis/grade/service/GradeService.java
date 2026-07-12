@@ -146,7 +146,7 @@ public class GradeService {
     @Transactional
     public GradeClassResponse approve(UUID scheduleId, SisUserDetails userDetails) {
         ClassSchedule schedule = findSchedule(scheduleId);
-        ensureApprover(userDetails);
+        ensureReviewer(userDetails);
         List<Grade> grades = currentClassGrades(schedule);
         if (grades.isEmpty()) {
             throw new BusinessRuleException("Class has no submitted grades");
@@ -168,7 +168,7 @@ public class GradeService {
     @Transactional
     public GradeClassResponse lock(UUID scheduleId, SisUserDetails userDetails) {
         ClassSchedule schedule = findSchedule(scheduleId);
-        ensureApprover(userDetails);
+        ensureLocker(userDetails);
         List<Grade> grades = currentClassGrades(schedule);
         if (grades.isEmpty()) {
             throw new BusinessRuleException("Class has no approved grades");
@@ -184,6 +184,19 @@ public class GradeService {
         }
         auditService.log(user, "GRADE_LOCKED", "GRADE", "ClassSchedule", schedule.getId(), null,
                 Map.of("gradeCount", grades.size(), "status", GradeStatus.LOCKED.name()));
+        return toClassResponse(schedule, grades);
+    }
+
+    @Transactional
+    public GradeClassResponse returnForCorrection(UUID scheduleId, String reason, SisUserDetails userDetails) {
+        ClassSchedule schedule = findSchedule(scheduleId);
+        ensureReviewer(userDetails);
+        List<Grade> grades = currentClassGrades(schedule);
+        if (grades.isEmpty() || grades.stream().anyMatch(grade -> grade.getStatus() != GradeStatus.SUBMITTED)) {
+            throw new BusinessRuleException("Only submitted grades can be returned for correction");
+        }
+        User user = currentUser(userDetails);
+        grades.forEach(grade -> changeStatus(grade, GradeStatus.RETURNED_FOR_CORRECTION, reason, user));
         return toClassResponse(schedule, grades);
     }
 
@@ -344,9 +357,15 @@ public class GradeService {
         }
     }
 
-    private void ensureApprover(SisUserDetails userDetails) {
-        if (!hasAuthority(userDetails, "GRADE_APPROVE")) {
+    private void ensureReviewer(SisUserDetails userDetails) {
+        if (!hasAuthority(userDetails, "GRADE_REVIEW") && !hasAuthority(userDetails, "GRADE_APPROVE")) {
             throw new BusinessRuleException("User is not allowed to approve grades");
+        }
+    }
+
+    private void ensureLocker(SisUserDetails userDetails) {
+        if (!hasAuthority(userDetails, "GRADE_LOCK") && !hasAuthority(userDetails, "GRADE_APPROVE")) {
+            throw new BusinessRuleException("User is not allowed to lock grades");
         }
     }
 

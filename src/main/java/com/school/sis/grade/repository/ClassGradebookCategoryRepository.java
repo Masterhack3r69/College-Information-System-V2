@@ -1,0 +1,1 @@
+package com.school.sis.grade.repository; import com.school.sis.grade.entity.ClassGradebookCategory; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface ClassGradebookCategoryRepository extends JpaRepository<ClassGradebookCategory,UUID>{List<ClassGradebookCategory> findByGradebookIdOrderByPeriodAscSortOrderAsc(UUID id);}

@@ -1,0 +1,1 @@
+package com.school.sis.grade.repository; import com.school.sis.grade.entity.GradingScale; import org.springframework.data.jpa.repository.*; import java.util.*; public interface GradingScaleRepository extends JpaRepository<GradingScale,UUID>,JpaSpecificationExecutor<GradingScale>{}

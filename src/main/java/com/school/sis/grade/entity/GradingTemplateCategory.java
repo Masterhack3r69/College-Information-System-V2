@@ -1,0 +1,6 @@
+package com.school.sis.grade.entity;
+import com.school.sis.common.audit.AuditableEntity; import jakarta.persistence.*; import java.math.BigDecimal; import java.util.UUID;
+@Entity @Table(name="grading_template_categories") public class GradingTemplateCategory extends AuditableEntity {
+ @Id private UUID id; @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="template_id") private GradingTemplate template; @Enumerated(EnumType.STRING) @Column(nullable=false) private GradingPeriod period; @Column(name="category_name",nullable=false) private String categoryName; @Column(nullable=false) private BigDecimal weight; @Column(name="sort_order",nullable=false) private int sortOrder;
+ @PrePersist void pre(){if(id==null)id=UUID.randomUUID();} public UUID getId(){return id;} public GradingTemplate getTemplate(){return template;} public void setTemplate(GradingTemplate v){template=v;} public GradingPeriod getPeriod(){return period;} public void setPeriod(GradingPeriod v){period=v;} public String getCategoryName(){return categoryName;} public void setCategoryName(String v){categoryName=v;} public BigDecimal getWeight(){return weight;} public void setWeight(BigDecimal v){weight=v;} public int getSortOrder(){return sortOrder;} public void setSortOrder(int v){sortOrder=v;}
+}

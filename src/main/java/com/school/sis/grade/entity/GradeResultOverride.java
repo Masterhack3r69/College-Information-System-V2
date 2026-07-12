@@ -1,0 +1,6 @@
+package com.school.sis.grade.entity;
+import com.school.sis.common.audit.AuditableEntity; import com.school.sis.enrollment.entity.EnrollmentSubject; import jakarta.persistence.*; import java.util.UUID;
+@Entity @Table(name="grade_result_overrides") public class GradeResultOverride extends AuditableEntity {
+ @Id private UUID id; @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="gradebook_id") private ClassGradebook gradebook; @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="enrollment_subject_id") private EnrollmentSubject enrollmentSubject; @Enumerated(EnumType.STRING) @Column(nullable=false) private GradeRemark remark; @Column(nullable=false) private String reason;
+ @PrePersist void pre(){if(id==null)id=UUID.randomUUID();} public UUID getId(){return id;} public ClassGradebook getGradebook(){return gradebook;} public void setGradebook(ClassGradebook v){gradebook=v;} public EnrollmentSubject getEnrollmentSubject(){return enrollmentSubject;} public void setEnrollmentSubject(EnrollmentSubject v){enrollmentSubject=v;} public GradeRemark getRemark(){return remark;} public void setRemark(GradeRemark v){remark=v;} public String getReason(){return reason;} public void setReason(String v){reason=v;}
+}

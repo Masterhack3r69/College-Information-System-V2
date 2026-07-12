@@ -19,6 +19,12 @@ import com.school.sis.grade.dto.GradeEntryRequest;
 import com.school.sis.grade.entity.GradeRemark;
 import com.school.sis.grade.entity.GradeStatus;
 import com.school.sis.grade.service.GradeService;
+import com.school.sis.grade.service.GradebookService;
+import com.school.sis.grade.dto.GradebookRequests;
+import com.school.sis.grade.dto.GradebookResponse;
+import com.school.sis.grade.entity.*;
+import com.school.sis.grade.repository.GradingScaleRepository;
+import com.school.sis.grade.repository.GradingTemplateRepository;
 import com.school.sis.schedule.dto.ScheduleMeetingRequest;
 import com.school.sis.schedule.dto.ScheduleRequest;
 import com.school.sis.schedule.dto.ScheduleResponse;
@@ -80,6 +86,9 @@ import static org.mockito.Mockito.when;
 class GradeServiceTests {
 
     private final GradeService gradeService;
+    private final GradebookService gradebookService;
+    private final GradingScaleRepository gradingScaleRepository;
+    private final GradingTemplateRepository gradingTemplateRepository;
     private final EnrollmentService enrollmentService;
     private final ScheduleService scheduleService;
     private final DepartmentRepository departmentRepository;
@@ -114,6 +123,9 @@ class GradeServiceTests {
     @Autowired
     GradeServiceTests(
             GradeService gradeService,
+            GradebookService gradebookService,
+            GradingScaleRepository gradingScaleRepository,
+            GradingTemplateRepository gradingTemplateRepository,
             EnrollmentService enrollmentService,
             ScheduleService scheduleService,
             DepartmentRepository departmentRepository,
@@ -129,6 +141,9 @@ class GradeServiceTests {
             StudentRepository studentRepository
     ) {
         this.gradeService = gradeService;
+        this.gradebookService = gradebookService;
+        this.gradingScaleRepository = gradingScaleRepository;
+        this.gradingTemplateRepository = gradingTemplateRepository;
         this.enrollmentService = enrollmentService;
         this.scheduleService = scheduleService;
         this.departmentRepository = departmentRepository;
@@ -304,6 +319,40 @@ class GradeServiceTests {
         assertThat(blocked.blockingIssues()).extracting("code").contains("PREREQUISITE_NOT_SATISFIED");
     }
 
+    @Test
+    void weightedGradebookCalculatesSubmitsApprovesAndLocks() {
+        ScheduleResponse schedule = confirmedClassWithTwoStudents();
+        GradingScale scale = new GradingScale();
+        scale.setScaleCode("SCALE-" + UUID.randomUUID());
+        scale.setScaleName("Test Scale");
+        GradingScaleBand failed = new GradingScaleBand();
+        failed.setMinimumPercentage(BigDecimal.ZERO); failed.setMaximumPercentage(new BigDecimal("74.99")); failed.setGradePoint(new BigDecimal("5.00")); failed.setRemark(GradeRemark.FAILED);
+        GradingScaleBand passed = new GradingScaleBand();
+        passed.setMinimumPercentage(new BigDecimal("75.00")); passed.setMaximumPercentage(new BigDecimal("100.00")); passed.setGradePoint(new BigDecimal("1.00")); passed.setRemark(GradeRemark.PASSED);
+        scale.setBands(List.of(failed, passed));
+        scale = gradingScaleRepository.save(scale);
+
+        GradingTemplate template = new GradingTemplate();
+        template.setTemplateCode("TPL-" + UUID.randomUUID()); template.setTemplateName("Weighted Test"); template.setProgram(program); template.setCourse(prerequisiteCourse); template.setScale(scale); template.setVersion(1); template.setMidtermWeight(new BigDecimal("50")); template.setFinalWeight(new BigDecimal("50"));
+        GradingTemplateCategory midterm = new GradingTemplateCategory(); midterm.setPeriod(GradingPeriod.MIDTERM); midterm.setCategoryName("Midterm Work"); midterm.setWeight(new BigDecimal("100")); midterm.setSortOrder(0);
+        GradingTemplateCategory finals = new GradingTemplateCategory(); finals.setPeriod(GradingPeriod.FINAL); finals.setCategoryName("Final Work"); finals.setWeight(new BigDecimal("100")); finals.setSortOrder(0);
+        template.setCategories(List.of(midterm, finals)); template = gradingTemplateRepository.save(template);
+
+        GradebookResponse book = gradebookService.initialize(schedule.id(), template.getId(), facultyUser(faculty));
+        book = gradebookService.saveItem(schedule.id(), new GradebookRequests.Item(null, book.categories().get(0).id(), "Midterm Exam", new BigDecimal("100"), null, 0), facultyUser(faculty));
+        book = gradebookService.saveItem(schedule.id(), new GradebookRequests.Item(null, book.categories().get(1).id(), "Final Exam", new BigDecimal("100"), null, 1), facultyUser(faculty));
+        GradebookResponse populated = book;
+        List<GradebookRequests.Score> entries = populated.students().stream().flatMap(result -> populated.items().stream()
+                .map(item -> new GradebookRequests.Score(item.id(), result.enrollmentSubjectId(), new BigDecimal("90"), ScoreStatus.SCORED))).toList();
+        book = gradebookService.saveScores(schedule.id(), new GradebookRequests.Scores(entries), facultyUser(faculty));
+        assertThat(book.students()).allMatch(result -> result.finalPercentage().compareTo(new BigDecimal("90.00")) == 0);
+
+        assertThat(gradebookService.submit(schedule.id(), facultyUser(faculty)).status()).isEqualTo(GradeStatus.SUBMITTED);
+        assertThat(gradebookService.approve(schedule.id(), authorityUser("GRADE_REVIEW", "ROLE_SUPER_ADMIN")).status()).isEqualTo(GradeStatus.APPROVED);
+        assertThat(gradebookService.lock(schedule.id(), authorityUser("GRADE_LOCK")).status()).isEqualTo(GradeStatus.LOCKED);
+        assertThat(gradeService.academicRecords(student.getId())).hasSize(1);
+    }
+
     private ScheduleResponse confirmedClassWithTwoStudents() {
         ScheduleResponse schedule = schedule(prerequisiteCourse, section, roomOne, DayOfWeek.MONDAY, "09:00", "10:00");
         confirmStudentInSchedule(student, schoolYear, semester, section, schedule);
@@ -455,6 +504,14 @@ class GradeServiceTests {
         when(userDetails.facultyId()).thenReturn(null);
         Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("GRADE_APPROVE"));
         doReturn(authorities).when(userDetails).getAuthorities();
+        return userDetails;
+    }
+
+    private SisUserDetails authorityUser(String... authorities) {
+        SisUserDetails userDetails = mock(SisUserDetails.class);
+        when(userDetails.id()).thenReturn(UUID.randomUUID());
+        when(userDetails.facultyId()).thenReturn(null);
+        doReturn(java.util.Arrays.stream(authorities).map(SimpleGrantedAuthority::new).toList()).when(userDetails).getAuthorities();
         return userDetails;
     }
 }
