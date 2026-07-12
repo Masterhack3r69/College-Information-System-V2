@@ -1,0 +1,66 @@
+package com.school.sis.setup.service;
+import com.school.sis.audit.AuditModule;
+import com.school.sis.audit.service.AuditService;
+
+import com.school.sis.common.exception.NotFoundException;
+import com.school.sis.common.response.PageResponse;
+import com.school.sis.setup.dto.SchoolYearRequest;
+import com.school.sis.setup.dto.SchoolYearResponse;
+import com.school.sis.setup.entity.SchoolYear;
+import com.school.sis.setup.repository.SchoolYearRepository;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Service
+public class SchoolYearService {
+
+    private final SchoolYearRepository schoolYearRepository;
+    private final AuditService auditService;
+
+    public SchoolYearService(SchoolYearRepository schoolYearRepository, AuditService auditService) {
+        this.schoolYearRepository = schoolYearRepository;
+        this.auditService = auditService;
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<SchoolYearResponse> list(Pageable pageable) {
+        return PageResponse.from(schoolYearRepository.findAll(pageable).map(this::toResponse));
+    }
+
+    @Transactional(readOnly = true)
+    public SchoolYearResponse get(UUID id) {
+        return toResponse(find(id));
+    }
+
+    @Transactional
+    public SchoolYearResponse create(SchoolYearRequest request) {
+        SchoolYear schoolYear = new SchoolYear();
+        apply(schoolYear, request);
+        SchoolYearResponse response = toResponse(schoolYearRepository.save(schoolYear)); auditService.log("SCHOOL_YEAR_CREATED", AuditModule.ACADEMIC_SETUP, "SchoolYear", response.id(), null, response); return response;
+    }
+
+    @Transactional
+    public SchoolYearResponse update(UUID id, SchoolYearRequest request) {
+        SchoolYear schoolYear = find(id);
+        SchoolYearResponse before = toResponse(schoolYear);
+        apply(schoolYear, request);
+        SchoolYearResponse after = toResponse(schoolYear); auditService.log("SCHOOL_YEAR_UPDATED", AuditModule.ACADEMIC_SETUP, "SchoolYear", id, before, after); return after;
+    }
+
+    private SchoolYear find(UUID id) {
+        return schoolYearRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("School year not found"));
+    }
+
+    private void apply(SchoolYear schoolYear, SchoolYearRequest request) {
+        schoolYear.setSchoolYear(request.schoolYear());
+        schoolYear.setActive(request.active());
+    }
+
+    private SchoolYearResponse toResponse(SchoolYear schoolYear) {
+        return new SchoolYearResponse(schoolYear.getId(), schoolYear.getSchoolYear(), schoolYear.isActive());
+    }
+}
