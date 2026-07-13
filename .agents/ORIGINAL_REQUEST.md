@@ -212,4 +212,32 @@ Develop and execute an automated solution to enroll 19 applicant students (4 fir
 - [ ] A verification script or SQL query proves that exactly 19 new student records exist for the first semester.
 - [ ] The verification script proves the distribution is exactly: 4 first-year, 5 second-year, 5 third-year, and 5 fourth-year students.
 
+## Follow-up — 2026-07-13T16:33:24+08:00
+
+Implement role-based access control (RBAC) or data-level filtering so that Teacher/Faculty accounts can only access academic functions (like grading, attendance, etc.) for their specifically assigned classes and students.
+
+Working directory: c:\Users\PC\Projects\cis
+Integrity mode: development
+
+## Requirements
+
+### R1. Implement Access Control
+Implement role-based access control or data-level filtering to ensure that Teacher/Faculty accounts can only access academic functions related to their specifically assigned classes and students.
+
+### R2. Codebase Integration
+Investigate the codebase to determine the best authorization pattern to use (e.g., policies, middleware, decorators, or direct checks) and implement the access control consistently using that pattern.
+
+### R3. Verification
+Design and implement a verification method (e.g., programmatic tests, a verification script, or an agent-as-judge setup) to objectively prove that the access control boundaries are working correctly.
+
+## Acceptance Criteria
+
+### Security
+- [ ] A Teacher/Faculty account attempting to access academic functions for an unassigned class is denied access.
+- [ ] A Teacher/Faculty account attempting to access academic functions for an unassigned student is denied access.
+
+### Verification
+- [ ] There is an objective verification method (e.g., tests or a script) implemented and run.
+- [ ] The output of the verification method confirms that the access control is functioning as expected.
+
 

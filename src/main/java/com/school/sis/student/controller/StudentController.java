@@ -112,7 +112,7 @@ public class StudentController {
     }
 
     @GetMapping("/{id}/academic-records")
-    @PreAuthorize("hasAuthority('STUDENT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('STUDENT_VIEW', 'GRADE_ENCODE')")
     public ApiResponse<StudentAcademicRecordsResponse> academicRecords(@PathVariable UUID id) {
         return ApiResponse.success("Student academic records retrieved", studentService.academicRecords(id));
     }

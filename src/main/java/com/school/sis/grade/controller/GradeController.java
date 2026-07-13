@@ -86,7 +86,7 @@ public class GradeController {
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAuthority('STUDENT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('STUDENT_VIEW', 'GRADE_ENCODE')")
     public ApiResponse<List<GradeResponse>> studentGrades(@PathVariable UUID studentId) {
         return ApiResponse.success("Student grades retrieved", gradeService.studentGrades(studentId));
     }

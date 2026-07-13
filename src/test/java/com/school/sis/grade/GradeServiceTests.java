@@ -364,6 +364,232 @@ class GradeServiceTests {
         assertThat(gradeService.academicRecords(student.getId())).hasSize(1);
     }
 
+    @Test
+    void facultyCanAccessAssignedStudentGradesAndRecords() {
+        ScheduleResponse schedule = confirmedClassWithTwoStudents();
+        
+        SisUserDetails principal = mock(SisUserDetails.class);
+        when(principal.id()).thenReturn(UUID.randomUUID());
+        when(principal.facultyId()).thenReturn(faculty.getId());
+        Collection<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("GRADE_ENCODE"),
+                new SimpleGrantedAuthority("ROLE_FACULTY")
+        );
+        doReturn(authorities).when(principal).getAuthorities();
+
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(principal, null, authorities)
+        );
+
+        try {
+            List<com.school.sis.grade.dto.GradeResponse> grades = gradeService.studentGrades(student.getId());
+            assertThat(grades).isNotNull();
+            
+            List<com.school.sis.grade.dto.AcademicRecordResponse> records = gradeService.academicRecords(student.getId());
+            assertThat(records).isNotNull();
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void facultyCannotAccessUnassignedStudentGradesAndRecords() {
+        ScheduleResponse schedule = confirmedClassWithTwoStudents();
+        
+        SisUserDetails principal = mock(SisUserDetails.class);
+        when(principal.id()).thenReturn(UUID.randomUUID());
+        when(principal.facultyId()).thenReturn(otherFaculty.getId());
+        Collection<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("GRADE_ENCODE"),
+                new SimpleGrantedAuthority("ROLE_FACULTY")
+        );
+        doReturn(authorities).when(principal).getAuthorities();
+
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(principal, null, authorities)
+        );
+
+        try {
+            assertThatThrownBy(() -> gradeService.studentGrades(student.getId()))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessage("Faculty can only access assigned students");
+
+            assertThatThrownBy(() -> gradeService.academicRecords(student.getId()))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessage("Faculty can only access assigned students");
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void facultyWithBypassRoleCanAccessUnassignedStudentGradesAndRecords() {
+        ScheduleResponse schedule = confirmedClassWithTwoStudents();
+        
+        List<String> bypassRoles = List.of(
+                "ROLE_SUPER_ADMIN",
+                "ROLE_REGISTRAR",
+                "ROLE_DEAN",
+                "ROLE_PROGRAM_HEAD",
+                "ROLE_READ_ONLY_STAFF"
+        );
+
+        for (String role : bypassRoles) {
+            SisUserDetails principal = mock(SisUserDetails.class);
+            when(principal.id()).thenReturn(UUID.randomUUID());
+            when(principal.facultyId()).thenReturn(otherFaculty.getId());
+            Collection<GrantedAuthority> authorities = List.of(
+                    new SimpleGrantedAuthority("STUDENT_VIEW"),
+                    new SimpleGrantedAuthority(role)
+            );
+            doReturn(authorities).when(principal).getAuthorities();
+
+            org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                    new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(principal, null, authorities)
+            );
+
+            try {
+                List<com.school.sis.grade.dto.GradeResponse> grades = gradeService.studentGrades(student.getId());
+                assertThat(grades).isNotNull();
+
+                List<com.school.sis.grade.dto.AcademicRecordResponse> records = gradeService.academicRecords(student.getId());
+                assertThat(records).isNotNull();
+            } finally {
+                org.springframework.security.core.context.SecurityContextHolder.clearContext();
+            }
+        }
+    }
+
+    @Test
+    void facultyCannotEncodeGradesForUnassignedClass() {
+        ScheduleResponse schedule = confirmedClassWithTwoStudents();
+        GradeClassResponse classGrades = gradeService.classGrades(schedule.id(), facultyUser(faculty));
+        
+        SisUserDetails principal = mock(SisUserDetails.class);
+        when(principal.id()).thenReturn(UUID.randomUUID());
+        when(principal.facultyId()).thenReturn(otherFaculty.getId());
+        Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("GRADE_ENCODE"));
+        doReturn(authorities).when(principal).getAuthorities();
+
+        assertThatThrownBy(() -> gradeService.encode(schedule.id(), new GradeEncodeRequest(List.of(
+                new GradeEntryRequest(classGrades.grades().getFirst().enrollmentSubjectId(), new BigDecimal("1.25"), null)
+        )), principal))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Faculty can only encode assigned classes");
+    }
+
+    @Test
+    void facultyCannotSubmitGradesForUnassignedClass() {
+        ScheduleResponse schedule = confirmedClassWithTwoStudents();
+        
+        SisUserDetails principal = mock(SisUserDetails.class);
+        when(principal.id()).thenReturn(UUID.randomUUID());
+        when(principal.facultyId()).thenReturn(otherFaculty.getId());
+        Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("GRADE_ENCODE"));
+        doReturn(authorities).when(principal).getAuthorities();
+
+        assertThatThrownBy(() -> gradeService.submit(schedule.id(), principal))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Faculty can only encode assigned classes");
+    }
+
+    @Test
+    void facultyCannotViewGradesForUnassignedClass() {
+        ScheduleResponse schedule = confirmedClassWithTwoStudents();
+        
+        SisUserDetails principal = mock(SisUserDetails.class);
+        when(principal.id()).thenReturn(UUID.randomUUID());
+        when(principal.facultyId()).thenReturn(otherFaculty.getId());
+        Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("GRADE_ENCODE"));
+        doReturn(authorities).when(principal).getAuthorities();
+
+        assertThatThrownBy(() -> gradeService.classGrades(schedule.id(), principal))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Faculty can only encode assigned classes");
+    }
+
+    @Test
+    void nonFacultyAccountWithoutBypassRolesCanAccessStudentGradesIfTheyHaveStudentView() {
+        ScheduleResponse schedule = confirmedClassWithTwoStudents();
+        
+        SisUserDetails principal = mock(SisUserDetails.class);
+        when(principal.id()).thenReturn(UUID.randomUUID());
+        when(principal.facultyId()).thenReturn(null);
+        Collection<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("STUDENT_VIEW")
+        );
+        doReturn(authorities).when(principal).getAuthorities();
+
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                    new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(principal, null, authorities)
+        );
+
+        try {
+            List<com.school.sis.grade.dto.GradeResponse> grades = gradeService.studentGrades(student.getId());
+            assertThat(grades).isNotNull();
+
+            List<com.school.sis.grade.dto.AcademicRecordResponse> records = gradeService.academicRecords(student.getId());
+            assertThat(records).isNotNull();
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
+
+
+    @Test
+    void facultyWithNullFacultyIdIsDeniedAccess() {
+        ScheduleResponse schedule = confirmedClassWithTwoStudents();
+        
+        SisUserDetails principal = mock(SisUserDetails.class);
+        when(principal.id()).thenReturn(UUID.randomUUID());
+        when(principal.facultyId()).thenReturn(null); // NULL faculty ID
+        Collection<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("GRADE_ENCODE"),
+                new SimpleGrantedAuthority("ROLE_FACULTY")
+        );
+        doReturn(authorities).when(principal).getAuthorities();
+
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(principal, null, authorities)
+        );
+
+        try {
+            assertThatThrownBy(() -> gradeService.studentGrades(student.getId()))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessage("Faculty user account is not linked to a Faculty record");
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void nonSisUserDetailsPrincipalWithFacultyRoleIsDeniedAccess() {
+        ScheduleResponse schedule = confirmedClassWithTwoStudents();
+        
+        // Mock a standard Spring Security User principal (not SisUserDetails)
+        Collection<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("GRADE_ENCODE"),
+                new SimpleGrantedAuthority("STUDENT_VIEW"),
+                new SimpleGrantedAuthority("ROLE_FACULTY")
+        );
+        org.springframework.security.core.userdetails.User principal = new org.springframework.security.core.userdetails.User(
+                "testfaculty", "password", authorities
+        );
+
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(principal, null, authorities)
+        );
+
+        try {
+            assertThatThrownBy(() -> gradeService.studentGrades(student.getId()))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessage("Access denied: Invalid security principal type for faculty");
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
+
+
     private ScheduleResponse confirmedClassWithTwoStudents() {
         ScheduleResponse schedule = schedule(prerequisiteCourse, section, roomOne, DayOfWeek.MONDAY, "09:00", "10:00");
         confirmStudentInSchedule(student, schoolYear, semester, section, schedule);

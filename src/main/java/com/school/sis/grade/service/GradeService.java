@@ -30,7 +30,9 @@ import com.school.sis.student.entity.Student;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -202,6 +204,7 @@ public class GradeService {
 
     @Transactional(readOnly = true)
     public List<GradeResponse> studentGrades(UUID studentId) {
+        ensureFacultyAccessToStudent(studentId);
         return gradeRepository.findByStudentIdOrderBySchoolYearSchoolYearAscSemesterSortOrderAscCourseCourseCodeAsc(studentId)
                 .stream()
                 .map(this::toResponse)
@@ -210,10 +213,40 @@ public class GradeService {
 
     @Transactional(readOnly = true)
     public List<AcademicRecordResponse> academicRecords(UUID studentId) {
+        ensureFacultyAccessToStudent(studentId);
         return academicRecordRepository.findByStudentIdOrderBySchoolYearSchoolYearAscSemesterSortOrderAscCourseCodeAsc(studentId)
                 .stream()
                 .map(this::toAcademicRecordResponse)
                 .toList();
+    }
+
+    private void ensureFacultyAccessToStudent(UUID studentId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null) {
+            boolean hasFacultyRole = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .anyMatch(a -> a.equals("ROLE_FACULTY") || a.equals("GRADE_ENCODE"));
+            boolean hasBypassRole = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .anyMatch(a -> a.equals("ROLE_SUPER_ADMIN") ||
+                                   a.equals("ROLE_REGISTRAR") ||
+                                   a.equals("ROLE_DEAN") ||
+                                   a.equals("ROLE_PROGRAM_HEAD") ||
+                                   a.equals("ROLE_READ_ONLY_STAFF"));
+            if (hasFacultyRole && !hasBypassRole) {
+                if (!(authentication.getPrincipal() instanceof SisUserDetails details)) {
+                    throw new BusinessRuleException("Access denied: Invalid security principal type for faculty");
+                }
+                UUID facultyId = details.facultyId();
+                if (facultyId == null) {
+                    throw new BusinessRuleException("Faculty user account is not linked to a Faculty record");
+                }
+                boolean assigned = enrollmentSubjectRepository.isFacultyAssignedToStudent(facultyId, studentId);
+                if (!assigned) {
+                    throw new BusinessRuleException("Faculty can only access assigned students");
+                }
+            }
+        }
     }
 
     public boolean hasPassedLockedCourse(UUID studentId, UUID courseId) {

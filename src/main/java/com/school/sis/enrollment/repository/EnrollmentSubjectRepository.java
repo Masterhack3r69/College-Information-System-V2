@@ -33,4 +33,17 @@ public interface EnrollmentSubjectRepository extends JpaRepository<EnrollmentSub
             order by enrollment.student.lastName asc, enrollment.student.firstName asc
             """)
     List<EnrollmentSubject> findConfirmedEnrolledSubjectsByScheduleId(@Param("scheduleId") UUID scheduleId);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(es) > 0 THEN true ELSE false END
+            FROM EnrollmentSubject es
+            JOIN es.enrollment e
+            JOIN es.classSchedule cs
+            WHERE e.student.id = :studentId
+              AND cs.faculty.id = :facultyId
+              AND es.status = com.school.sis.enrollment.entity.EnrollmentSubjectStatus.ENROLLED
+              AND e.status = com.school.sis.enrollment.entity.EnrollmentStatus.CONFIRMED
+            """)
+    boolean isFacultyAssignedToStudent(@Param("facultyId") UUID facultyId, @Param("studentId") UUID studentId);
 }
+
