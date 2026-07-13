@@ -1,0 +1,65 @@
+# Student Portal
+
+## Purpose
+
+Provide student-owned access to current enrollment, schedule, academics, finance, announcements, class content, forms, requests, contact profile, and account security.
+
+## Status
+
+Implemented
+
+## Main Users
+
+Users with the `STUDENT` role, `STUDENT_PORTAL_ACCESS`, and a linked `student_id`; registrars administer portal settings/content/requests through `STUDENT_PORTAL_ADMIN`.
+
+## Current Features
+
+- Student dashboard and current portal-term information.
+- Contact/emergency profile updates and mandatory initial password change.
+- Online enrollment window, draft/subject selection, validation, and submission.
+- Confirmed schedule, locked grades, curriculum progress, and visible finalized attendance.
+- Assessment and payment history.
+- Portal and class announcements, published materials, downloadable forms.
+- Document/clearance service requests, cancellation, fulfillment download.
+- Registrar controls for term settings, notices, forms, requests, fulfillment, and enrollment return.
+
+## Main Workflow
+
+Provision student account → force password change → enter portal → use enabled term services → view only records linked to the authenticated student. Staff administer shared portal settings and request processing.
+
+## Business Rules
+
+- Ownership comes from the authenticated user's linked student record.
+- Enrollment is available only when enabled and within optional opening/closing timestamps.
+- Only published announcements/materials/forms are exposed.
+- Academic grades shown to students come from locked academic records.
+- Attendance is shown only when portal settings allow it and sessions are finalized.
+- A student may cancel only a `SUBMITTED` service request.
+
+## Frontend Implementation
+
+Routes under `/student`: dashboard, enrollment, schedule, academics, finance, announcements, documents/requests, profile, and `/student/account/password`. Registrar administration uses `/admin/student-portal`.
+
+## Backend Implementation
+
+`StudentPortalController`, `StudentPortalAdminController`, `StudentPortalService`, `StudentPortalAccess`, file storage, account provisioning, and audit logging.
+
+## Database Entities
+
+`student_portal_term_settings`, `portal_announcements`, `student_forms`, `student_service_requests`, `student_service_request_history`, users/students, enrollment, academic, finance, attendance, and class-content tables.
+
+## API Endpoints
+
+Student endpoints use `/api/v1/student/me/*`; administrative endpoints use `/api/v1/student-portal/admin/*`.
+
+## Known Gaps
+
+- No comprehensive student browser test suite was found.
+- Files use local filesystem storage.
+
+## Related Notes
+
+- [[Enrollment]]
+- [[Billing]]
+- [[Authentication and Roles]]
+
