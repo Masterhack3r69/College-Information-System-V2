@@ -81,6 +81,9 @@ public class AuthService {
         if (!refreshToken.isUsable()) {
             throw new BusinessRuleException("Refresh token is expired or revoked");
         }
+        if (!refreshToken.getUser().isActive()) {
+            throw new BusinessRuleException("Account is inactive");
+        }
         refreshToken.revoke();
         return issueTokens(refreshToken.getUser());
     }

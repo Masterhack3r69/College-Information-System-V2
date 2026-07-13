@@ -188,7 +188,9 @@ Administration and audit:
 - `PUT /api/v1/users/{id}`
 - `PATCH /api/v1/users/{id}/status`
 - `POST /api/v1/users/{id}/reset-password`
+- `GET /api/v1/users/faculty-options`
 - `GET /api/v1/roles`
+- `GET /api/v1/permissions`
 - `PUT /api/v1/roles/{id}/permissions`
 - `GET /api/v1/audit-logs`
 
@@ -198,7 +200,7 @@ Administration and audit:
 mvn test
 ```
 
-The test suite includes a PostgreSQL Testcontainers migration test. When Docker is available it creates an empty PostgreSQL 16 database, applies Flyway V1-V8, and starts Hibernate with schema validation enabled.
+The test suite includes a PostgreSQL Testcontainers migration test. When Docker is available it creates an empty PostgreSQL 16 database, applies Flyway V1-V13, and starts Hibernate with schema validation enabled.
 
 Inspect the local database before applying changes:
 

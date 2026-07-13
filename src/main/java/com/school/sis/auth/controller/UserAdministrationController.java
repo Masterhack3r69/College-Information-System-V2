@@ -42,6 +42,16 @@ public class UserAdministrationController {
     @GetMapping("/roles") public ApiResponse<List<RoleResponse>> roles() {
         return ApiResponse.success("Roles retrieved", service.listRoles());
     }
+    @GetMapping("/permissions") public ApiResponse<List<PermissionResponse>> permissions() {
+        return ApiResponse.success("Permissions retrieved", service.listPermissions());
+    }
+    @GetMapping("/users/faculty-options")
+    public ApiResponse<PageResponse<FacultyAccountOptionResponse>> facultyOptions(
+            @RequestParam(required=false) String search,
+            @RequestParam(required=false) UUID includeFacultyId,
+            Pageable pageable) {
+        return ApiResponse.success("Faculty account options retrieved", service.facultyOptions(search, includeFacultyId, pageable));
+    }
     @PutMapping("/roles/{id}/permissions") public ApiResponse<RoleResponse> permissions(@PathVariable UUID id, @Valid @RequestBody RolePermissionsRequest request) {
         return ApiResponse.success("Role permissions updated", service.setRolePermissions(id, request.permissionIds()));
     }

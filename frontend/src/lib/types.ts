@@ -26,6 +26,49 @@ export type AuthResponse = {
   expiresInSeconds: number
   user: User
 }
+
+export type Permission = {
+  id: string
+  name: string
+  description: string
+}
+
+export type Role = {
+  id: string
+  name: string
+  description: string
+  permissions: Permission[]
+}
+
+export type AdminUser = {
+  id: string
+  username: string
+  email: string
+  fullName: string
+  active: boolean
+  facultyId?: string
+  facultyName?: string
+  roles: Role[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type UserAccountRequest = {
+  username: string
+  email: string
+  fullName: string
+  initialPassword?: string
+  roleIds: string[]
+  facultyId?: string
+}
+
+export type FacultyAccountOption = {
+  id: string
+  employeeNumber: string
+  fullName: string
+  email: string
+  status: ActiveStatus
+}
 export type Gender = "MALE" | "FEMALE" | "OTHER"
 
 export type StudentStatus =

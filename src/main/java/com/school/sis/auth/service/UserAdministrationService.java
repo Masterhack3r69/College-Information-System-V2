@@ -106,9 +106,26 @@ public class UserAdministrationService {
         return roles.findAll().stream().sorted(Comparator.comparing(Role::getName)).map(RoleResponse::from).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<PermissionResponse> listPermissions() {
+        return permissions.findAll().stream()
+                .sorted(Comparator.comparing(Permission::getName))
+                .map(PermissionResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<FacultyAccountOptionResponse> facultyOptions(String search, UUID includeFacultyId, Pageable pageable) {
+        String term = search == null ? "" : search.trim();
+        return PageResponse.from(faculty.findAccountOptions(term, includeFacultyId, pageable)
+                .map(FacultyAccountOptionResponse::from));
+    }
+
     @Transactional
     public RoleResponse setRolePermissions(UUID id, Set<UUID> permissionIds) {
         Role role = roles.findById(id).orElseThrow(() -> new NotFoundException("Role not found"));
+        if (SUPER_ADMIN.equals(role.getName()))
+            throw new BusinessRuleException("SUPER_ADMIN permissions are system-managed");
         Set<String> before = role.getPermissions().stream().map(Permission::getName).collect(java.util.stream.Collectors.toCollection(TreeSet::new));
         List<Permission> found = permissions.findAllById(permissionIds);
         if (found.size() != permissionIds.size()) throw new NotFoundException("One or more permissions were not found");

@@ -9,7 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.PrePersist;
 
@@ -39,8 +39,8 @@ public class User extends AuditableEntity {
     @Column(nullable = false)
     private boolean active;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "faculty_id")
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "faculty_id", unique = true)
     private Faculty faculty;
 
     @ManyToMany(fetch = FetchType.EAGER)

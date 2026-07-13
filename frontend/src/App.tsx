@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
-import { BookOpenCheck, CalendarDays, ClipboardList, FileText, GraduationCap, Home, LogOut, Settings, ShieldCheck, Users, WalletCards } from "lucide-react"
+import { BookOpenCheck, CalendarDays, ClipboardList, FileText, GraduationCap, Home, LogOut, Settings, ShieldCheck, UserRoundCog, Users, WalletCards } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { LoginPage } from "@/pages/login-page"
 import { EnrollmentPage } from "@/pages/enrollment-page"
@@ -22,6 +22,7 @@ import { Link } from "react-router-dom"
 import { FinancePage } from "@/pages/finance-page"
 import { GradesPage } from "@/pages/grades-page"
 import { GradingSetupPage } from "@/pages/setup/grading-setup-page"
+import { UsersAccountsPage } from "@/pages/users-accounts-page"
 
 const nav = [
   { to: "/", label: "Overview", icon: Home }, { to: "/students", label: "Students", icon: Users, permission: "STUDENT_VIEW" },
@@ -30,6 +31,7 @@ const nav = [
   { to: "/finance", label: "Finance", icon: WalletCards, permission: "FINANCE_VIEW" },
   { to: "/grades", label: "Grades", icon: BookOpenCheck, anyPermissions: ["GRADE_ENCODE", "GRADE_REVIEW", "GRADE_LOCK", "GRADE_APPROVE"] }, { to: "/reports", label: "Reports", icon: FileText, permission: "REPORT_GENERATE" },
   { to: "/setup", label: "Academic Setup", icon: Settings, permission: "ACADEMIC_SETUP_VIEW" },
+  { to: "/administration/users", label: "Users & Accounts", icon: UserRoundCog, permission: "USER_MANAGE" },
 ]
 
 function Guard({ permission, anyPermissions }: { permission?: string; anyPermissions?: string[] }) { const { user, ready, can } = useAuth(); if (!ready) return <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">Loading workspace…</div>; if (!user) return <Navigate to="/login" replace />; if (permission && !can(permission)) return <Forbidden />; if (anyPermissions && !anyPermissions.some(can)) return <Forbidden />; return <Outlet /> }
@@ -91,6 +93,10 @@ export default function App() {
               <Route path="curricula/:id" element={<CurriculumBuilder />} />
               <Route path="grading" element={<GradingSetupPage />} />
             </Route>
+          </Route>
+
+          <Route element={<Guard permission="USER_MANAGE" />}>
+            <Route path="administration/users" element={<UsersAccountsPage />} />
           </Route>
 
           <Route path="*" element={
