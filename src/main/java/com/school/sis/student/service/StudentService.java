@@ -140,6 +140,9 @@ public class StudentService {
         Student student = findStudent(id);
         var oldStatus = student.getStatus();
         student.setStatus(request.status());
+        if (request.status() == com.school.sis.student.entity.StudentStatus.ARCHIVED) {
+            userRepository.findByStudentId(student.getId()).ifPresent(user -> user.setActive(false));
+        }
         auditService.log("STUDENT_STATUS_UPDATED", "STUDENT", "Student", student.getId(),
                 Map.of("status", oldStatus.name()), Map.of("status", student.getStatus().name()));
         return toResponse(student);

@@ -37,3 +37,8 @@ sis:
     refresh-expiration-seconds: ${JWT_REFRESH_EXPIRATION:604800}
   storage:
     document-root: ${DOCUMENT_ROOT:uploads/documents}
+    material-root: ${MATERIAL_ROOT:uploads/materials}
+    form-root: ${FORM_ROOT:uploads/forms}
+    request-root: ${REQUEST_ROOT:uploads/requests}
+  student-account:
+    provisioning-enabled: ${STUDENT_ACCOUNT_PROVISIONING_ENABLED:true}

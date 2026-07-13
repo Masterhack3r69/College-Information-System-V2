@@ -179,7 +179,7 @@ export function CurriculumBuilder() {
           {error instanceof Error ? error.message : "The requested curriculum could not be found or loaded."}
         </p>
         <Button asChild className="mt-4 bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
-          <Link to="/setup/curricula">
+          <Link to="/admin/setup/curricula">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Curricula
           </Link>
         </Button>
@@ -340,7 +340,7 @@ export function CurriculumBuilder() {
             <Plus className="mr-1.5 h-4 w-4" /> Add Course
           </Button>
           <Button asChild variant="outline">
-            <Link to="/setup/curricula">
+            <Link to="/admin/setup/curricula">
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Curricula
             </Link>
           </Button>

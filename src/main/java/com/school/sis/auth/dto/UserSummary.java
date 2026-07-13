@@ -9,6 +9,11 @@ public record UserSummary(
         String email,
         String fullName,
         List<String> roles,
-        List<String> permissions
+        List<String> permissions,
+        UUID facultyId,
+        UUID studentId,
+        boolean passwordChangeRequired,
+        List<String> availablePortals,
+        String defaultPortal
 ) {
 }

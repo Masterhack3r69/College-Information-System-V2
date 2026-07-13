@@ -1,6 +1,7 @@
 package com.school.sis.enrollment.service;
 
 import com.school.sis.audit.service.AuditService;
+import com.school.sis.auth.service.StudentAccountProvisioningService;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
@@ -15,6 +16,7 @@ import com.school.sis.enrollment.dto.EnrollmentSummaryResponse;
 import com.school.sis.enrollment.dto.EnrollmentUpdateRequest;
 import com.school.sis.enrollment.dto.EnrollmentValidationIssueResponse;
 import com.school.sis.enrollment.dto.EnrollmentValidationResponse;
+import com.school.sis.enrollment.dto.EnrollmentConfirmationResponse;
 import com.school.sis.enrollment.entity.Enrollment;
 import com.school.sis.enrollment.entity.EnrollmentStatus;
 import com.school.sis.enrollment.entity.EnrollmentStatusHistory;
@@ -70,6 +72,7 @@ public class EnrollmentService {
     private final CurriculumCourseRepository curriculumCourseRepository;
     private final GradeService gradeService;
     private final AuditService auditService;
+    private final StudentAccountProvisioningService accountProvisioning;
 
     public EnrollmentService(
             EnrollmentRepository enrollmentRepository,
@@ -82,7 +85,8 @@ public class EnrollmentService {
             ClassScheduleRepository classScheduleRepository,
             CurriculumCourseRepository curriculumCourseRepository,
             GradeService gradeService,
-            AuditService auditService
+            AuditService auditService,
+            StudentAccountProvisioningService accountProvisioning
     ) {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentSubjectRepository = enrollmentSubjectRepository;
@@ -95,6 +99,7 @@ public class EnrollmentService {
         this.curriculumCourseRepository = curriculumCourseRepository;
         this.gradeService = gradeService;
         this.auditService = auditService;
+        this.accountProvisioning = accountProvisioning;
     }
 
     @Transactional(readOnly = true)
@@ -216,8 +221,13 @@ public class EnrollmentService {
 
     @Transactional
     public EnrollmentResponse confirm(UUID id) {
+        return confirmWithAccount(id).enrollment();
+    }
+
+    @Transactional
+    public EnrollmentConfirmationResponse confirmWithAccount(UUID id) {
         Enrollment enrollment = findEnrollment(id);
-        ensureDraft(enrollment);
+        ensureConfirmable(enrollment);
         EnrollmentValidationResponse validation = validateEnrollment(enrollment);
         if (!validation.valid()) {
             throw new BusinessRuleException("Enrollment has validation issues");
@@ -226,11 +236,13 @@ public class EnrollmentService {
         enrollment.setStatus(EnrollmentStatus.CONFIRMED);
         enrollment.getStudent().setYearLevel(enrollment.getYearLevel());
         enrollment.getStudent().setStatus(com.school.sis.student.entity.StudentStatus.ENROLLED);
+        var provisioned=accountProvisioning.provision(enrollment.getStudent());
         recordStatusHistory(enrollment, previous, EnrollmentStatus.CONFIRMED, "Enrollment confirmed");
         auditService.log("ENROLLMENT_CONFIRMED", "ENROLLMENT", "Enrollment", enrollment.getId(),
                 Map.of("status", previous.name()),
                 Map.of("studentId", enrollment.getStudent().getId(), "status", enrollment.getStatus().name(), "subjectCount", activeSubjects(enrollment).size()));
-        return toResponse(enrollment);
+        return new EnrollmentConfirmationResponse(toResponse(enrollment),
+                new EnrollmentConfirmationResponse.Account(provisioned.created(),provisioned.username(),provisioned.initialPassword(),true));
     }
 
     @Transactional
@@ -411,6 +423,11 @@ public class EnrollmentService {
         if (enrollment.getStatus() != EnrollmentStatus.DRAFT) {
             throw new BusinessRuleException("Only draft enrollments can be modified");
         }
+    }
+
+    private void ensureConfirmable(Enrollment enrollment) {
+        if (enrollment.getStatus() != EnrollmentStatus.DRAFT && enrollment.getStatus() != EnrollmentStatus.SUBMITTED)
+            throw new BusinessRuleException("Only draft or submitted enrollments can be confirmed");
     }
 
     private Section resolveSectionForStudent(Student student, SchoolYear schoolYear, Semester semester, int yearLevel, UUID sectionId) {

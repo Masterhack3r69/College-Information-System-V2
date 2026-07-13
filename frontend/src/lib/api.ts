@@ -55,3 +55,10 @@ export async function openPdf(path: string) {
   if (!response.ok) throw new ApiError("Unable to open PDF", response.status)
   window.open(URL.createObjectURL(await response.blob()), "_blank", "noopener,noreferrer")
 }
+
+export async function downloadFile(path:string){
+  const headers=new Headers();if(accessToken)headers.set("Authorization",`Bearer ${accessToken}`)
+  let response=await fetch(`${baseUrl}${path}`,{headers});if(response.status===401&&await refreshAccessToken()){headers.set("Authorization",`Bearer ${accessToken}`);response=await fetch(`${baseUrl}${path}`,{headers})}
+  if(!response.ok)throw new ApiError("Unable to download file",response.status)
+  const disposition=response.headers.get("Content-Disposition")??"";const match=disposition.match(/filename="?([^";]+)"?/i);const url=URL.createObjectURL(await response.blob());const a=document.createElement("a");a.href=url;a.download=match?.[1]??"download";a.click();URL.revokeObjectURL(url)
+}

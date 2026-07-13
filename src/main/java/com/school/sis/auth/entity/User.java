@@ -2,6 +2,7 @@ package com.school.sis.auth.entity;
 
 import com.school.sis.common.audit.AuditableEntity;
 import com.school.sis.setup.entity.Faculty;
+import com.school.sis.student.entity.Student;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,6 +13,7 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.PrePersist;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -42,6 +44,14 @@ public class User extends AuditableEntity {
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "faculty_id", unique = true)
     private Faculty faculty;
+
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "student_id", unique = true)
+    private Student student;
+
+    @Column(name = "must_change_password", nullable = false)
+    @ColumnDefault("false")
+    private boolean mustChangePassword;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -95,6 +105,11 @@ public class User extends AuditableEntity {
     public void setFaculty(Faculty faculty) {
         this.faculty = faculty;
     }
+
+    public Student getStudent() { return student; }
+    public void setStudent(Student student) { this.student = student; }
+    public boolean isMustChangePassword() { return mustChangePassword; }
+    public void setMustChangePassword(boolean value) { this.mustChangePassword = value; }
 
     public Set<Role> getRoles() {
         return roles;

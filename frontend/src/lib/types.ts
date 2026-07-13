@@ -19,7 +19,13 @@ export type User = {
   fullName: string
   roles: string[]
   permissions: string[]
+  facultyId?: string
+  studentId?: string
+  passwordChangeRequired: boolean
+  availablePortals: Portal[]
+  defaultPortal: Portal
 }
+export type Portal = "ADMIN" | "FACULTY" | "STUDENT"
 export type AuthResponse = {
   accessToken: string
   refreshToken: string

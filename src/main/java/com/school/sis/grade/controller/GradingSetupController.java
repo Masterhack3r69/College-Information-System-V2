@@ -1,6 +1,6 @@
 package com.school.sis.grade.controller;
 import com.school.sis.common.response.ApiResponse; import com.school.sis.grade.dto.*; import com.school.sis.grade.service.GradingSetupService; import jakarta.validation.Valid; import org.springframework.security.access.prepost.PreAuthorize; import org.springframework.web.bind.annotation.*; import java.util.*;
-@RestController @RequestMapping("/api/v1/grading-setup") @PreAuthorize("hasAuthority('ACADEMIC_SETUP_VIEW')") public class GradingSetupController {
+@RestController @RequestMapping("/api/v1/grading-setup") @PreAuthorize("hasAnyAuthority('ACADEMIC_SETUP_VIEW','GRADE_ENCODE')") public class GradingSetupController {
  private final GradingSetupService service; public GradingSetupController(GradingSetupService s){service=s;}
  @GetMapping("/scales") public ApiResponse<List<GradingScaleResponse>> scales(){return ApiResponse.success("Grading scales retrieved",service.scales());}
  @GetMapping("/scales/{id}") public ApiResponse<GradingScaleResponse> scale(@PathVariable UUID id){return ApiResponse.success("Grading scale retrieved",service.scale(id));}

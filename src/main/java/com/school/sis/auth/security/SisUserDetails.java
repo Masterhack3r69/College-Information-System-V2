@@ -33,6 +33,9 @@ public class SisUserDetails implements UserDetails {
         return user.getFaculty() == null ? null : user.getFaculty().getId();
     }
 
+    public UUID studentId() { return user.getStudent() == null ? null : user.getStudent().getId(); }
+    public boolean mustChangePassword() { return user.isMustChangePassword(); }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return user.getRoles().stream()

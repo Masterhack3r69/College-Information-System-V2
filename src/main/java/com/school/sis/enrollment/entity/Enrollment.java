@@ -22,6 +22,7 @@ import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 
 @Entity
 @Table(name = "enrollments")
@@ -58,6 +59,9 @@ public class Enrollment extends AuditableEntity {
 
     private String remarks;
 
+    @Column(name = "submitted_at")
+    private Instant submittedAt;
+
     @OneToMany(mappedBy = "enrollment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EnrollmentSubject> subjects = new ArrayList<>();
 
@@ -83,6 +87,8 @@ public class Enrollment extends AuditableEntity {
     public void setStatus(EnrollmentStatus status) { this.status = status; }
     public String getRemarks() { return remarks; }
     public void setRemarks(String remarks) { this.remarks = remarks; }
+    public Instant getSubmittedAt() { return submittedAt; }
+    public void setSubmittedAt(Instant value) { this.submittedAt = value; }
     public List<EnrollmentSubject> getSubjects() { return subjects; }
     public void addSubject(EnrollmentSubject subject) {
         subject.setEnrollment(this);

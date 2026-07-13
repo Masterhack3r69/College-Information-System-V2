@@ -5,6 +5,7 @@ import com.school.sis.auth.repository.UserRepository;
 import com.school.sis.auth.security.SisUserDetails;
 import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.NotFoundException;
+import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.curriculum.entity.CurriculumCourse;
 import com.school.sis.curriculum.repository.CurriculumCourseRepository;
 import com.school.sis.enrollment.entity.Enrollment;
@@ -266,6 +267,7 @@ public class ReportService {
     @Transactional
     public PdfReport classList(UUID scheduleId, SisUserDetails userDetails) {
         ClassSchedule schedule = findSchedule(scheduleId);
+        ensureClassReportScope(schedule, userDetails);
         List<EnrollmentSubject> subjects = enrollmentSubjectRepository.findConfirmedEnrolledSubjectsByScheduleId(scheduleId);
         try (PdfReportBuilder pdf = builder(userDetails)) {
             classHeader(pdf, schedule, "Class List");
@@ -286,6 +288,7 @@ public class ReportService {
     @Transactional
     public PdfReport gradeSheet(UUID scheduleId, SisUserDetails userDetails) {
         ClassSchedule schedule = findSchedule(scheduleId);
+        ensureClassReportScope(schedule, userDetails);
         List<EnrollmentSubject> subjects = enrollmentSubjectRepository.findConfirmedEnrolledSubjectsByScheduleId(scheduleId);
         Map<UUID, Grade> gradesBySubject = gradeRepository.findByEnrollmentSubjectIdIn(subjects.stream().map(EnrollmentSubject::getId).toList())
                 .stream()
@@ -312,10 +315,19 @@ public class ReportService {
 
     @Transactional
     public PdfReport gradeSlip(UUID studentId, SisUserDetails userDetails) {
+        return gradeReport(studentId,userDetails,"Grade Slip","grade-slip-");
+    }
+
+    @Transactional
+    public PdfReport unofficialGradeReport(UUID studentId, SisUserDetails userDetails) {
+        return gradeReport(studentId,userDetails,"Unofficial Grade Report","unofficial-grade-report-");
+    }
+
+    private PdfReport gradeReport(UUID studentId,SisUserDetails userDetails,String title,String filenamePrefix) {
         Student student = findStudent(studentId);
         List<AcademicRecord> records = academicRecordRepository.findByStudentIdOrderBySchoolYearSchoolYearAscSemesterSortOrderAscCourseCodeAsc(studentId);
         try (PdfReportBuilder pdf = builder(userDetails)) {
-            pdf.start("Grade Slip");
+            pdf.start(title);
             studentHeader(pdf, student);
             pdf.section("Locked Grades");
             pdf.table(new String[]{"Term", "Course", "Units", "Grade", "Remarks", "Earned"}, records.stream()
@@ -329,7 +341,7 @@ public class ReportService {
                     })
                     .toList());
             log("GRADE_SLIP", "Student", studentId, userDetails);
-            return new PdfReport("grade-slip-" + student.getStudentNumber() + ".pdf", pdf.finish());
+            return new PdfReport(filenamePrefix + student.getStudentNumber() + ".pdf", pdf.finish());
         }
     }
 
@@ -377,6 +389,14 @@ public class ReportService {
     private ClassSchedule findSchedule(UUID scheduleId) {
         return classScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new NotFoundException("Schedule not found"));
+    }
+
+    private void ensureClassReportScope(ClassSchedule schedule, SisUserDetails userDetails) {
+        // Controllers require authentication; null is retained for trusted internal/report test callers.
+        if (userDetails == null) return;
+        boolean unrestricted = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("REPORT_GENERATE"));
+        if (!unrestricted && (userDetails.facultyId() == null || !userDetails.facultyId().equals(schedule.getFaculty().getId())))
+            throw new BusinessRuleException("Faculty can only generate reports for assigned classes");
     }
 
     private void log(String reportType, String targetType, UUID targetId, SisUserDetails userDetails) {

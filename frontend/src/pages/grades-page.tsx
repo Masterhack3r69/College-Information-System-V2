@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link, useLocation } from "react-router-dom"
 import { toast } from "sonner"
 import {
   AlertTriangle,
@@ -89,6 +90,7 @@ const statusVariant = (s: string) =>
       : ("secondary" as const)
 export function GradesPage() {
   const { can } = useAuth()
+  const location = useLocation()
   const scopes = [
     can("GRADE_ENCODE") ? { v: "MY", l: "My Classes" } : null,
     can("GRADE_REVIEW") ? { v: "REVIEW", l: "Review Queue" } : null,
@@ -97,12 +99,15 @@ export function GradesPage() {
   const [scope, setScope] = useState(scopes[0]?.v ?? "MY")
   return (
     <div className="flex flex-col gap-6 p-4 md:p-7">
-      <div>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
         <h1 className="text-2xl font-semibold">Grades</h1>
         <p className="text-sm text-muted-foreground">
           Encode weighted scores, review submitted gradebooks, and lock official
           academic results.
         </p>
+        </div>
+        {location.pathname.startsWith("/faculty")?<Button asChild variant="outline"><Link to="/faculty/grade-corrections">Locked-grade corrections</Link></Button>:null}
       </div>
       <Tabs value={scope} onValueChange={setScope}>
         <TabsList>

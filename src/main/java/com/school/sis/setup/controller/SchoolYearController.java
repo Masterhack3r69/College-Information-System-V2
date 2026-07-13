@@ -29,13 +29,13 @@ public class SchoolYearController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('ACADEMIC_SETUP_VIEW')")
+    @PreAuthorize("hasAnyAuthority('ACADEMIC_SETUP_VIEW','FACULTY_CLASS_VIEW')")
     public ApiResponse<PageResponse<SchoolYearResponse>> list(Pageable pageable) {
         return ApiResponse.success("School years retrieved", schoolYearService.list(pageable));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ACADEMIC_SETUP_VIEW')")
+    @PreAuthorize("hasAnyAuthority('ACADEMIC_SETUP_VIEW','FACULTY_CLASS_VIEW')")
     public ApiResponse<SchoolYearResponse> get(@PathVariable UUID id) {
         return ApiResponse.success("School year retrieved", schoolYearService.get(id));
     }

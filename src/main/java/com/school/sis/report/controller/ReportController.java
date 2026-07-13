@@ -57,13 +57,13 @@ public class ReportController {
     }
 
     @GetMapping("/classes/{scheduleId}/class-list")
-    @PreAuthorize("hasAuthority('REPORT_GENERATE')")
+    @PreAuthorize("hasAnyAuthority('REPORT_GENERATE','FACULTY_REPORT_VIEW')")
     public ResponseEntity<byte[]> classList(@PathVariable UUID scheduleId, @AuthenticationPrincipal SisUserDetails userDetails) {
         return pdf(reportService.classList(scheduleId, userDetails));
     }
 
     @GetMapping("/classes/{scheduleId}/grade-sheet")
-    @PreAuthorize("hasAuthority('REPORT_GENERATE')")
+    @PreAuthorize("hasAnyAuthority('REPORT_GENERATE','FACULTY_REPORT_VIEW')")
     public ResponseEntity<byte[]> gradeSheet(@PathVariable UUID scheduleId, @AuthenticationPrincipal SisUserDetails userDetails) {
         return pdf(reportService.gradeSheet(scheduleId, userDetails));
     }

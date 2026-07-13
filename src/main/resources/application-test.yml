@@ -8,8 +8,9 @@ spring:
       ddl-auto: create-drop
   flyway:
     enabled: false
-
 sis:
+  student-account:
+    provisioning-enabled: false
   jwt:
     secret: test_secret_test_secret_test_secret_test_secret_test_secret
     access-expiration-seconds: 900

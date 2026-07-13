@@ -10,6 +10,7 @@ import com.school.sis.enrollment.dto.EnrollmentSubjectRequest;
 import com.school.sis.enrollment.dto.EnrollmentSummaryResponse;
 import com.school.sis.enrollment.dto.EnrollmentUpdateRequest;
 import com.school.sis.enrollment.dto.EnrollmentValidationResponse;
+import com.school.sis.enrollment.dto.EnrollmentConfirmationResponse;
 import com.school.sis.enrollment.entity.EnrollmentStatus;
 import com.school.sis.enrollment.service.EnrollmentService;
 import jakarta.validation.Valid;
@@ -91,8 +92,8 @@ public class EnrollmentController {
 
     @PostMapping("/{id}/confirm")
     @PreAuthorize("hasAuthority('ENROLLMENT_APPROVE')")
-    public ApiResponse<EnrollmentResponse> confirm(@PathVariable UUID id) {
-        return ApiResponse.success("Enrollment confirmed", enrollmentService.confirm(id));
+    public ApiResponse<EnrollmentConfirmationResponse> confirm(@PathVariable UUID id) {
+        return ApiResponse.success("Enrollment confirmed", enrollmentService.confirmWithAccount(id));
     }
 
     @PostMapping("/{id}/cancel")

@@ -26,6 +26,7 @@ import java.util.Base64;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
 
 @Service
 public class AuthService {
@@ -129,18 +130,27 @@ public class AuthService {
     }
 
     private UserSummary toSummary(User user) {
+        var roleNames = user.getRoles().stream().map(role -> role.getName()).sorted().toList();
+        var permissionNames = user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(permission -> permission.getName()).distinct().sorted().toList();
+        var portals = new ArrayList<String>();
+        if (permissionNames.contains("FACULTY_PORTAL_ACCESS") && user.getFaculty() != null) portals.add("FACULTY");
+        if (roleNames.stream().anyMatch(role -> !role.equals("FACULTY") && !role.equals("STUDENT"))) portals.add("ADMIN");
+        if (permissionNames.contains("STUDENT_PORTAL_ACCESS") && user.getStudent() != null) portals.add("STUDENT");
+        if (portals.isEmpty()) portals.add("ADMIN");
         return new UserSummary(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getFullName(),
-                user.getRoles().stream().map(role -> role.getName()).sorted().toList(),
-                user.getRoles().stream()
-                        .flatMap(role -> role.getPermissions().stream())
-                        .map(permission -> permission.getName())
-                        .distinct()
-                        .sorted(Comparator.naturalOrder())
-                        .toList()
+                roleNames,
+                permissionNames,
+                user.getFaculty() == null ? null : user.getFaculty().getId(),
+                user.getStudent() == null ? null : user.getStudent().getId(),
+                user.isMustChangePassword(),
+                portals,
+                portals.contains("FACULTY") ? "FACULTY" : portals.getFirst()
         );
     }
 }
