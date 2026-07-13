@@ -126,7 +126,9 @@ function ClassQueue({ scope }: { scope: string }) {
     terms = useSemesters(0, 100).data?.items ?? []
   const [year, setYear] = useState("all"),
     [term, setTerm] = useState("all"),
-    [status, setStatus] = useState("all"),
+    [status, setStatus] = useState(
+      scope === "REVIEW" ? "SUBMITTED" : scope === "LOCK" ? "APPROVED" : "all"
+    ),
     [search, setSearch] = useState(""),
     [page, setPage] = useState(0),
     [opened, setOpened] = useState<GradeClassSummary>()
@@ -374,9 +376,13 @@ function GradebookDialog({
       if (confirm === "lock") await lock.mutateAsync(book.scheduleId)
       if (confirm === "return")
         await returned.mutateAsync({ scheduleId: book.scheduleId, reason })
-      toast.success(
-        `Gradebook ${confirm === "return" ? "returned" : confirm + "ed"}`
-      )
+      const actionLabel = {
+        submit: "submitted",
+        approve: "approved",
+        lock: "locked",
+        return: "returned",
+      }[confirm]
+      toast.success(`Gradebook ${actionLabel}`)
       setConfirm(undefined)
       setReason("")
     } catch (e) {

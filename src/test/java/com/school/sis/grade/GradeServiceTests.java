@@ -339,8 +339,19 @@ class GradeServiceTests {
         template.setCategories(List.of(midterm, finals)); template = gradingTemplateRepository.save(template);
 
         GradebookResponse book = gradebookService.initialize(schedule.id(), template.getId(), facultyUser(faculty));
+        assertThat(book.students()).allMatch(result -> !result.complete());
         book = gradebookService.saveItem(schedule.id(), new GradebookRequests.Item(null, book.categories().get(0).id(), "Midterm Exam", new BigDecimal("100"), null, 0), facultyUser(faculty));
         book = gradebookService.saveItem(schedule.id(), new GradebookRequests.Item(null, book.categories().get(1).id(), "Final Exam", new BigDecimal("100"), null, 1), facultyUser(faculty));
+
+        ScheduleResponse otherSchedule = schedule(prerequisiteCourse, section, roomTwo, DayOfWeek.FRIDAY, "15:00", "16:00");
+        GradebookResponse otherBook = gradebookService.initialize(otherSchedule.id(), template.getId(), facultyUser(faculty));
+        UUID firstBookItemId = book.items().getFirst().id();
+        assertThatThrownBy(() -> gradebookService.saveItem(otherSchedule.id(),
+                new GradebookRequests.Item(firstBookItemId, otherBook.categories().getFirst().id(), "Moved item", new BigDecimal("100"), null, 0),
+                facultyUser(faculty)))
+                .isInstanceOf(com.school.sis.common.exception.NotFoundException.class)
+                .hasMessage("Assessment item not found");
+
         GradebookResponse populated = book;
         List<GradebookRequests.Score> entries = populated.students().stream().flatMap(result -> populated.items().stream()
                 .map(item -> new GradebookRequests.Score(item.id(), result.enrollmentSubjectId(), new BigDecimal("90"), ScoreStatus.SCORED))).toList();
