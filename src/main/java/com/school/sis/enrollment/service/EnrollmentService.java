@@ -26,6 +26,7 @@ import com.school.sis.enrollment.repository.EnrollmentRepository;
 import com.school.sis.enrollment.repository.EnrollmentStatusHistoryRepository;
 import com.school.sis.enrollment.repository.EnrollmentSubjectRepository;
 import com.school.sis.grade.service.GradeService;
+import com.school.sis.fee.service.FinanceLedgerService;
 import com.school.sis.schedule.dto.ScheduleMeetingResponse;
 import com.school.sis.schedule.entity.ClassSchedule;
 import com.school.sis.schedule.entity.ScheduleMeeting;
@@ -73,6 +74,7 @@ public class EnrollmentService {
     private final GradeService gradeService;
     private final AuditService auditService;
     private final StudentAccountProvisioningService accountProvisioning;
+    private final FinanceLedgerService financeLedger;
 
     public EnrollmentService(
             EnrollmentRepository enrollmentRepository,
@@ -86,7 +88,8 @@ public class EnrollmentService {
             CurriculumCourseRepository curriculumCourseRepository,
             GradeService gradeService,
             AuditService auditService,
-            StudentAccountProvisioningService accountProvisioning
+            StudentAccountProvisioningService accountProvisioning,
+            FinanceLedgerService financeLedger
     ) {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentSubjectRepository = enrollmentSubjectRepository;
@@ -100,6 +103,7 @@ public class EnrollmentService {
         this.gradeService = gradeService;
         this.auditService = auditService;
         this.accountProvisioning = accountProvisioning;
+        this.financeLedger = financeLedger;
     }
 
     @Transactional(readOnly = true)
@@ -250,6 +254,10 @@ public class EnrollmentService {
         Enrollment enrollment = findEnrollment(id);
         if (enrollment.getStatus() == EnrollmentStatus.CANCELLED) {
             throw new BusinessRuleException("Enrollment is already cancelled");
+        }
+        if (!financeLedger.financeResolvedForEnrollment(id)) {
+            throw new BusinessRuleException("FINANCE_RESOLUTION_REQUIRED",
+                    "Finance must resolve the linked assessment before enrollment cancellation");
         }
         EnrollmentStatus previous = enrollment.getStatus();
         enrollment.setStatus(EnrollmentStatus.CANCELLED);

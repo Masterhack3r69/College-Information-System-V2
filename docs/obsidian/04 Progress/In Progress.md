@@ -4,7 +4,7 @@
 
 ### Current State
 
-Backend service/security tests pass and the frontend builds. Existing Playwright suites concentrate on academic setup and leave portal lifecycles less covered.
+Backend service/security tests pass and the frontend builds. The development Finance dataset is reset and seeded through V17. Existing Playwright suites concentrate on academic setup and leave portal lifecycles less covered.
 
 ### Completed
 
@@ -15,12 +15,29 @@ Backend service/security tests pass and the frontend builds. Existing Playwright
 
 - Run a fresh full Playwright suite against the current seeded stack.
 - Add end-to-end coverage for registrar, cashier, faculty, and student lifecycle boundaries.
-- Verify PostgreSQL `V1`–`V15` in Testcontainers with Docker available.
+- Add multi-thread PostgreSQL Finance tests and a full cross-role browser suite.
 - Resolve the current ESLint errors and warnings.
 
 ### Blockers
 
-- Docker was unavailable to the latest migration test.
+- Testcontainers Docker auto-detection still skips locally, although isolated PostgreSQL 16 Flyway V1–V17 validation succeeds.
+
+## Finance Modernization Verification
+
+### Completed
+
+- V16 schema, RBAC, locked ledger services, workflows, administrative/student UI, clean PostgreSQL migration, core service tests, and production frontend build.
+- V17 Finance reset applied to the development database with the representative college fee catalog.
+
+### Remaining
+
+- Automated concurrent mutation tests, full permission matrix, representative V15 data migration fixture, PDF content assertions, and browser regression flows.
+- Institution-approved replacement or sign-off for the representative fee amounts before production.
+
+### Related
+
+- [[Finance Modernization]]
+- [[Finance Test Cases]]
 - E2E execution requires a running configured stack and known test state.
 
 ## Faculty Navigation Completion

@@ -27,11 +27,46 @@ export function useRecalculateAssessment() {
 }
 export function usePostPayment() {
   const client = useQueryClient()
-  return useMutation({ mutationFn: ({ assessmentId, ...body }: { assessmentId: string; officialReceiptNumber: string; amount: number; paymentMethod: PaymentMethod; externalReference?: string; remarks?: string }) => api<Payment>(`/assessments/${assessmentId}/payments`, { method: "POST", body: JSON.stringify(body) }), onSuccess: payment => { void client.invalidateQueries({ queryKey: ["assessment", payment.assessmentId] }); void client.invalidateQueries({ queryKey: ["assessments"] }) } })
+  return useMutation({ mutationFn: ({ assessmentId, ...body }: { assessmentId: string; requestId: string; amount: number; paymentMethod: PaymentMethod; externalReference?: string; remarks?: string }) => api<Payment>(`/assessments/${assessmentId}/payments`, { method: "POST", body: JSON.stringify(body) }), onSuccess: payment => { void client.invalidateQueries({ queryKey: ["assessment", payment.assessmentId] }); void client.invalidateQueries({ queryKey: ["assessments"] }); void client.invalidateQueries({ queryKey: ["finance-dashboard"] }) } })
 }
 export function useVoidPayment() {
   const client = useQueryClient()
-  return useMutation({ mutationFn: (variables: { paymentId: string; assessmentId: string; reason: string }) => api<Payment>(`/assessment-payments/${variables.paymentId}/void`, { method: "POST", body: JSON.stringify({ reason: variables.reason }) }), onSuccess: (_, variables) => { void client.invalidateQueries({ queryKey: ["assessment", variables.assessmentId] }); void client.invalidateQueries({ queryKey: ["assessments"] }) } })
+  return useMutation({ mutationFn: (variables: { paymentId: string; assessmentId: string; reason: string }) => api<Record<string, unknown>>(`/assessment-payments/${variables.paymentId}/void`, { method: "POST", body: JSON.stringify({ requestId: crypto.randomUUID(), reason: variables.reason }) }), onSuccess: (_, variables) => { void client.invalidateQueries({ queryKey: ["assessment", variables.assessmentId] }); void client.invalidateQueries({ queryKey: ["assessments"] }); void client.invalidateQueries({ queryKey: ["finance-approvals"] }) } })
+}
+
+export type FinanceRecord = Record<string, unknown>
+export function useFinanceDashboard() { return useQuery({ queryKey: ["finance-dashboard"], queryFn: () => api<FinanceRecord>("/finance/dashboard") }) }
+export function useReceiptSeries() { return useQuery({ queryKey: ["finance-receipt-series"], queryFn: () => api<FinanceRecord[]>("/finance/receipt-series") }) }
+export function useCashierSessions() { return useQuery({ queryKey: ["finance-sessions"], queryFn: () => api<FinanceRecord[]>("/finance/cashier-sessions") }) }
+export function useCurrentCashierSession(enabled = true) { return useQuery({ queryKey: ["finance-current-session"], queryFn: () => api<FinanceRecord>("/finance/cashier-sessions/current"), enabled, retry: false }) }
+export function useFinanceApprovals() {
+  return useQuery({ queryKey: ["finance-approvals"], queryFn: async () => {
+    const [voids, adjustments, refunds, cancellations] = await Promise.all([
+      api<FinanceRecord[]>("/finance/payment-void-requests?status=REQUESTED"),
+      api<FinanceRecord[]>("/finance/adjustments?status=REQUESTED"),
+      api<FinanceRecord[]>("/finance/refunds?status=REQUESTED"),
+      api<FinanceRecord[]>("/finance/cancellation-requests?status=REQUESTED"),
+    ])
+    return { voids, adjustments, refunds, cancellations }
+  } })
+}
+export function useInstallmentTemplates() { return useQuery({ queryKey: ["finance-installment-templates"], queryFn: () => api<FinanceRecord[]>("/finance/installment-templates") }) }
+export function useAssessmentAdjustments(id?: string) { return useQuery({ queryKey: ["assessment-adjustments", id], queryFn: () => api<FinanceRecord[]>(`/assessments/${id}/adjustments`), enabled: Boolean(id) }) }
+export function useAssessmentRefunds(id?: string) { return useQuery({ queryKey: ["assessment-refunds", id], queryFn: () => api<FinanceRecord[]>(`/finance/refunds?assessmentId=${id}`), enabled: Boolean(id) }) }
+export function useAssessmentPlan(id?: string) { return useQuery({ queryKey: ["assessment-plan", id], queryFn: () => api<FinanceRecord>(`/assessments/${id}/installment-plan`), enabled: Boolean(id), retry: false }) }
+export function useFinanceMutation<T extends Record<string, unknown> = Record<string, unknown>>(path: string, method = "POST") {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: (body: T) => api<FinanceRecord>(path, { method, body: JSON.stringify(body) }), onSuccess: () => {
+    void client.invalidateQueries({ queryKey: ["finance-dashboard"] }); void client.invalidateQueries({ queryKey: ["finance-sessions"] })
+    void client.invalidateQueries({ queryKey: ["finance-current-session"] }); void client.invalidateQueries({ queryKey: ["finance-approvals"] })
+    void client.invalidateQueries({ queryKey: ["finance-receipt-series"] }); void client.invalidateQueries({ queryKey: ["finance-installment-templates"] }); void client.invalidateQueries({ queryKey: ["assessments"] })
+  } })
+}
+export function useFinanceAction() {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: ({ path, method = "POST", body }: { path: string; method?: string; body?: Record<string, unknown> }) => api<FinanceRecord>(path, { method, body: body ? JSON.stringify(body) : undefined }), onSuccess: () => {
+    for (const key of [["finance-dashboard"], ["finance-sessions"], ["finance-current-session"], ["finance-approvals"], ["finance-receipt-series"], ["finance-installment-templates"], ["assessment-adjustments"], ["assessment-refunds"], ["assessment-plan"], ["assessment"], ["assessments"]]) void client.invalidateQueries({ queryKey: key })
+  } })
 }
 export function useFees(filters: { search?: string; category?: FeeCategory; status?: ActiveStatus; page: number; size: number }) {
   return useQuery({ queryKey: ["fees", filters], queryFn: () => api<PageResponse<FeeItemSummary>>(`/fees${queryString(filters)}`) })

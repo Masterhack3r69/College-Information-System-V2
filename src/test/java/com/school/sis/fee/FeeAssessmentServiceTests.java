@@ -13,7 +13,7 @@ import com.school.sis.enrollment.dto.EnrollmentSubjectRequest;
 import com.school.sis.enrollment.entity.EnrollmentStatus;
 import com.school.sis.enrollment.service.EnrollmentService;
 import com.school.sis.fee.dto.AssessmentResponse;
-import com.school.sis.fee.dto.AssessmentStatusRequest;
+import com.school.sis.fee.dto.FinanceRequests;
 import com.school.sis.fee.dto.FeeItemRequest;
 import com.school.sis.fee.dto.FeeRuleRequest;
 import com.school.sis.fee.entity.AssessmentStatus;
@@ -22,6 +22,7 @@ import com.school.sis.fee.entity.FeeComputationType;
 import com.school.sis.fee.service.AssessmentService;
 import com.school.sis.fee.service.FeeService;
 import com.school.sis.fee.service.PaymentService;
+import com.school.sis.fee.service.FinanceOperationsService;
 import com.school.sis.fee.dto.PaymentRequest;
 import com.school.sis.fee.entity.PaymentMethod;
 import com.school.sis.fee.entity.PaymentStatus;
@@ -65,6 +66,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -72,6 +74,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -80,6 +83,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ActiveProfiles("test")
 @SpringBootTest
 @Transactional
+@Sql("/finance-test-schema.sql")
 class FeeAssessmentServiceTests {
 
     private final FeeService feeService;
@@ -87,6 +91,7 @@ class FeeAssessmentServiceTests {
     private final EnrollmentService enrollmentService;
     private final ScheduleService scheduleService;
     private final PaymentService paymentService;
+    private final FinanceOperationsService financeOperations;
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final ProgramRepository programRepository;
@@ -111,6 +116,7 @@ class FeeAssessmentServiceTests {
     private Section section;
     private Student student;
     private SisUserDetails cashier;
+    private SisUserDetails manager;
 
     @Autowired
     FeeAssessmentServiceTests(
@@ -119,6 +125,7 @@ class FeeAssessmentServiceTests {
             EnrollmentService enrollmentService,
             ScheduleService scheduleService,
             PaymentService paymentService,
+            FinanceOperationsService financeOperations,
             UserRepository userRepository,
             DepartmentRepository departmentRepository,
             ProgramRepository programRepository,
@@ -137,6 +144,7 @@ class FeeAssessmentServiceTests {
         this.enrollmentService = enrollmentService;
         this.scheduleService = scheduleService;
         this.paymentService = paymentService;
+        this.financeOperations = financeOperations;
         this.userRepository = userRepository;
         this.departmentRepository = departmentRepository;
         this.programRepository = programRepository;
@@ -242,6 +250,18 @@ class FeeAssessmentServiceTests {
         cashierUser.setFullName("Test Cashier");
         cashierUser.setActive(true);
         cashier = new SisUserDetails(userRepository.save(cashierUser));
+
+        User managerUser = new User();
+        managerUser.setUsername("finance-manager-" + suffix);
+        managerUser.setEmail("finance-manager-" + suffix + "@sis.local");
+        managerUser.setPasswordHash("unused");
+        managerUser.setFullName("Test Finance Manager");
+        managerUser.setActive(true);
+        manager = new SisUserDetails(userRepository.saveAndFlush(managerUser));
+
+        var series = financeOperations.createReceiptSeries(
+                new FinanceRequests.ReceiptSeries("T" + suffix, 1, 999, 6, cashier.id()), manager);
+        financeOperations.openSession(new FinanceRequests.SessionOpen((UUID) series.get("id"), LocalDate.now()), cashier);
     }
 
     @Test
@@ -303,7 +323,7 @@ class FeeAssessmentServiceTests {
     void blocksRecalculationAfterPayment() {
         createFee("MISC-PAID", FeeCategory.MISCELLANEOUS, FeeComputationType.FIXED_AMOUNT, "100");
         AssessmentResponse assessment = assessmentService.generate(enrollmentWithTwoSubjects().id());
-        assessmentService.updateStatus(assessment.id(), new AssessmentStatusRequest(AssessmentStatus.PARTIAL, BigDecimal.valueOf(50)));
+        paymentService.post(assessment.id(), payment("50", PaymentMethod.CASH), cashier);
 
         assertThatThrownBy(() -> assessmentService.recalculate(assessment.id()))
                 .isInstanceOf(BusinessRuleException.class)
@@ -327,31 +347,104 @@ class FeeAssessmentServiceTests {
         createFee("PAYMENT", FeeCategory.MISCELLANEOUS, FeeComputationType.FIXED_AMOUNT, "1000");
         AssessmentResponse assessment = assessmentService.generate(enrollmentWithTwoSubjects().id());
 
-        var first = paymentService.post(assessment.id(), new PaymentRequest("OR-" + UUID.randomUUID(), new BigDecimal("400"), PaymentMethod.CASH, null, null), cashier);
+        var first = paymentService.post(assessment.id(), payment("400", PaymentMethod.CASH), cashier);
         AssessmentResponse partial = assessmentService.get(assessment.id());
         assertThat(partial.status()).isEqualTo(AssessmentStatus.PARTIAL);
         assertThat(partial.balance()).isEqualByComparingTo("600");
 
-        var second = paymentService.post(assessment.id(), new PaymentRequest("OR-" + UUID.randomUUID(), new BigDecimal("600"), PaymentMethod.E_WALLET, "REF-1", null), cashier);
+        var second = paymentService.post(assessment.id(), new PaymentRequest(UUID.randomUUID(), new BigDecimal("600"), PaymentMethod.E_WALLET, "REF-1", null), cashier);
         assertThat(assessmentService.get(assessment.id()).status()).isEqualTo(AssessmentStatus.PAID);
 
-        var voided = paymentService.voidPayment(second.id(), "Wrong payment", cashier);
-        assertThat(voided.status()).isEqualTo(PaymentStatus.VOIDED);
+        var voidRequest = financeOperations.requestVoid(second.id(), new FinanceRequests.IdempotentReason(UUID.randomUUID(), "Wrong payment"), cashier);
+        financeOperations.decideVoid((UUID) voidRequest.get("id"), new FinanceRequests.Decision(true, "Approved correction"), manager);
+        financeOperations.executeVoid((UUID) voidRequest.get("id"), new FinanceRequests.IdempotentReason(UUID.randomUUID(), "Execute approved void"), cashier);
+        assertThat(paymentService.list(assessment.id()).stream().filter(p -> p.id().equals(second.id())).findFirst().orElseThrow().status()).isEqualTo(PaymentStatus.VOIDED);
         assertThat(assessmentService.get(assessment.id()).balance()).isEqualByComparingTo("600");
         assertThat(paymentService.list(assessment.id())).hasSize(2);
         assertThat(first.status()).isEqualTo(PaymentStatus.POSTED);
     }
 
     @Test
-    void rejectsDuplicateReceiptAndOverpayment() {
+    void retriesAreIdempotentAndOverpaymentIsRejected() {
         createFee("PAYMENT-VALIDATION", FeeCategory.MISCELLANEOUS, FeeComputationType.FIXED_AMOUNT, "500");
         AssessmentResponse assessment = assessmentService.generate(enrollmentWithTwoSubjects().id());
-        String receipt = "OR-" + UUID.randomUUID();
-        paymentService.post(assessment.id(), new PaymentRequest(receipt, new BigDecimal("100"), PaymentMethod.CASH, null, null), cashier);
-        assertThatThrownBy(() -> paymentService.post(assessment.id(), new PaymentRequest(receipt, new BigDecimal("100"), PaymentMethod.CASH, null, null), cashier))
-                .isInstanceOf(BusinessRuleException.class).hasMessage("Official receipt number already exists");
-        assertThatThrownBy(() -> paymentService.post(assessment.id(), new PaymentRequest("OR-" + UUID.randomUUID(), new BigDecimal("401"), PaymentMethod.CASH, null, null), cashier))
+        UUID requestId = UUID.randomUUID();
+        var request = new PaymentRequest(requestId, new BigDecimal("100"), PaymentMethod.CASH, null, null);
+        var first = paymentService.post(assessment.id(), request, cashier);
+        var retry = paymentService.post(assessment.id(), request, cashier);
+        assertThat(retry.id()).isEqualTo(first.id());
+        assertThat(paymentService.list(assessment.id())).hasSize(1);
+        assertThatThrownBy(() -> paymentService.post(assessment.id(), payment("401", PaymentMethod.CASH), cashier))
                 .isInstanceOf(BusinessRuleException.class).hasMessage("Payment cannot exceed the remaining balance");
+    }
+
+    @Test
+    void approvedDiscountCreatesCreditAndIndependentRefundRestoresPaidState() {
+        createFee("REFUND-LIFECYCLE", FeeCategory.MISCELLANEOUS, FeeComputationType.FIXED_AMOUNT, "500");
+        AssessmentResponse assessment = assessmentService.generate(enrollmentWithTwoSubjects().id());
+        paymentService.post(assessment.id(), payment("500", PaymentMethod.CASH), cashier);
+
+        var adjustment = financeOperations.requestAdjustment(assessment.id(),
+                new FinanceRequests.Adjustment(UUID.randomUUID(), FinanceRequests.AdjustmentType.DISCOUNT,
+                        new BigDecimal("100"), "Approved scholarship"), cashier);
+        assertThatThrownBy(() -> financeOperations.decideAdjustment((UUID) adjustment.get("id"),
+                new FinanceRequests.Decision(true, "Self approval"), cashier))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("requester cannot approve");
+        financeOperations.decideAdjustment((UUID) adjustment.get("id"),
+                new FinanceRequests.Decision(true, "Scholarship verified"), manager);
+        assertThat(assessmentService.get(assessment.id()).status()).isEqualTo(AssessmentStatus.CREDIT_BALANCE);
+        assertThat(assessmentService.get(assessment.id()).creditBalance()).isEqualByComparingTo("100");
+
+        var refund = financeOperations.requestRefund(assessment.id(),
+                new FinanceRequests.Refund(UUID.randomUUID(), new BigDecimal("100"), "Return excess collection"), cashier);
+        financeOperations.decideRefund((UUID) refund.get("id"), new FinanceRequests.Decision(true, "Credit verified"), manager);
+        financeOperations.disburseRefund((UUID) refund.get("id"),
+                new FinanceRequests.RefundDisbursement(UUID.randomUUID(), PaymentMethod.CASH, null), cashier);
+
+        AssessmentResponse settled = assessmentService.get(assessment.id());
+        assertThat(settled.refundedAmount()).isEqualByComparingTo("100");
+        assertThat(settled.netPaidAmount()).isEqualByComparingTo("400");
+        assertThat(settled.creditBalance()).isZero();
+        assertThat(settled.status()).isEqualTo(AssessmentStatus.PAID);
+    }
+
+    @Test
+    void installmentSnapshotAllocatesPartialPaymentToOldestLine() {
+        createFee("INSTALLMENT", FeeCategory.MISCELLANEOUS, FeeComputationType.FIXED_AMOUNT, "1000");
+        AssessmentResponse assessment = assessmentService.generate(enrollmentWithTwoSubjects().id());
+        var template = financeOperations.saveTemplate(null, new FinanceRequests.Template("Two part " + UUID.randomUUID(),
+                schoolYear.getId(), semester.getId(), "ACTIVE", List.of(
+                new FinanceRequests.TemplateLine(1, "Enrollment", LocalDate.now().plusDays(7), new BigDecimal("50")),
+                new FinanceRequests.TemplateLine(2, "Final", LocalDate.now().plusDays(30), new BigDecimal("50"))
+        )), manager);
+        financeOperations.assignPlan(assessment.id(), new FinanceRequests.PlanAssignment((UUID) template.get("id"), null), manager);
+        paymentService.post(assessment.id(), payment("300", PaymentMethod.CASH), cashier);
+
+        var installments = (List<?>) financeOperations.plan(assessment.id()).get("installments");
+        assertThat(installments).hasSize(2);
+        assertThat(((Map<?, ?>) installments.getFirst()).get("status")).isEqualTo("PARTIAL");
+        assertThat(((BigDecimal) ((Map<?, ?>) installments.getFirst()).get("paidAmount"))).isEqualByComparingTo("300");
+    }
+
+    @Test
+    void enrollmentCancellationWaitsForResolvedAssessment() {
+        createFee("CANCELLATION", FeeCategory.MISCELLANEOUS, FeeComputationType.FIXED_AMOUNT, "300");
+        EnrollmentResponse enrollment = enrollmentWithTwoSubjects();
+        AssessmentResponse assessment = assessmentService.generate(enrollment.id());
+        assertThatThrownBy(() -> enrollmentService.cancel(enrollment.id(), "Registrar request"))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("Finance must resolve");
+
+        var request = financeOperations.requestCancellation(assessment.id(),
+                new FinanceRequests.IdempotentReason(UUID.randomUUID(), "Enrollment withdrawn"), cashier);
+        financeOperations.decideCancellation((UUID) request.get("id"),
+                new FinanceRequests.Decision(true, "Withdrawal verified"), manager);
+
+        assertThat(assessmentService.get(assessment.id()).status()).isEqualTo(AssessmentStatus.CANCELLED);
+        assertThat(enrollmentService.cancel(enrollment.id(), "Finance resolved").status()).isEqualTo(EnrollmentStatus.CANCELLED);
+    }
+
+    private PaymentRequest payment(String amount, PaymentMethod method) {
+        return new PaymentRequest(UUID.randomUUID(), new BigDecimal(amount), method, null, null);
     }
 
     private EnrollmentResponse enrollmentWithTwoSubjects() {

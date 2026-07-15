@@ -26,6 +26,12 @@ public class AssessmentPayment extends AuditableEntity {
     @Column(name = "void_reason") private String voidReason;
     @Column(name = "voided_at") private Instant voidedAt;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "voided_by_user_id") private User voidedBy;
+    @Column(name = "request_id") private UUID requestId;
+    @Column(name = "cashier_session_id") private UUID cashierSessionId;
+    @Column(name = "receipt_series_id") private UUID receiptSeriesId;
+    @Column(name = "receipt_sequence") private Long receiptSequence;
+    @Column(name = "balance_after") private BigDecimal balanceAfter;
+    @Column(name = "legacy_receipt", nullable = false) private boolean legacyReceipt = true;
 
     @PrePersist void prePersist() { if (id == null) id = UUID.randomUUID(); if (paidAt == null) paidAt = Instant.now(); }
     public UUID getId() { return id; }
@@ -54,4 +60,16 @@ public class AssessmentPayment extends AuditableEntity {
     public void setVoidedAt(Instant value) { voidedAt = value; }
     public User getVoidedBy() { return voidedBy; }
     public void setVoidedBy(User value) { voidedBy = value; }
+    public UUID getRequestId() { return requestId; }
+    public void setRequestId(UUID value) { requestId = value; }
+    public UUID getCashierSessionId() { return cashierSessionId; }
+    public void setCashierSessionId(UUID value) { cashierSessionId = value; }
+    public UUID getReceiptSeriesId() { return receiptSeriesId; }
+    public void setReceiptSeriesId(UUID value) { receiptSeriesId = value; }
+    public Long getReceiptSequence() { return receiptSequence; }
+    public void setReceiptSequence(Long value) { receiptSequence = value; }
+    public BigDecimal getBalanceAfter() { return balanceAfter; }
+    public void setBalanceAfter(BigDecimal value) { balanceAfter = value; }
+    public boolean isLegacyReceipt() { return legacyReceipt; }
+    public void setLegacyReceipt(boolean value) { legacyReceipt = value; }
 }

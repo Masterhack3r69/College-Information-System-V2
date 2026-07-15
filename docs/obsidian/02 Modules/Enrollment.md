@@ -30,6 +30,7 @@ Draft → select section/classes → validate → student submit or registrar co
 - Student enrollment requires an enabled/open portal term window and ownership of the enrollment.
 - Student submission moves `DRAFT` to `SUBMITTED`; administrative confirmation produces `CONFIRMED`.
 - Status changes are recorded in `enrollment_status_history`.
+- Cancellation proceeds immediately when no assessment exists. If an assessment exists, it must be `CANCELLED` or `REFUNDED` and have a resolved Finance cancellation request; otherwise the API returns `FINANCE_RESOLUTION_REQUIRED`.
 
 ## Frontend Implementation
 
@@ -55,10 +56,10 @@ Administrative route `/admin/enrollment`; student route `/student/enrollment`; p
 ## Known Gaps
 
 - No completed cross-role E2E test proves the full student-submit → registrar-confirm → assessment lifecycle.
+- The administrative cancellation UI surfaces the backend Finance error, but a dedicated inline Finance-resolution status panel remains a browser-verification item.
 
 ## Related Notes
 
 - [[Student Records]]
 - [[Billing]]
 - [[Student Portal]]
-

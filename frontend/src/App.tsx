@@ -20,7 +20,6 @@ import { CurriculumBuilder } from "@/pages/setup/curriculum-builder"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Link } from "react-router-dom"
-import { FinancePage } from "@/pages/finance-page"
 import { GradesPage } from "@/pages/grades-page"
 import { GradingSetupPage } from "@/pages/setup/grading-setup-page"
 import { UsersAccountsPage } from "@/pages/users-accounts-page"
@@ -41,6 +40,7 @@ const StudentEnrollmentPage=lazy(()=>import("@/pages/student/student-enrollment-
 const StudentSchedulePage=lazy(()=>import("@/pages/student/student-schedule-page"))
 const StudentAcademicsPage=lazy(()=>import("@/pages/student/student-academics-page"))
 const StudentFinancePage=lazy(()=>import("@/pages/student/student-finance-page"))
+const FinancePage=lazy(()=>import("@/pages/finance-page").then(module=>({default:module.FinancePage})))
 const StudentAnnouncementsPage=lazy(()=>import("@/pages/student/student-announcements-page"))
 const StudentDocumentsPage=lazy(()=>import("@/pages/student/student-documents-page"))
 const StudentProfilePage=lazy(()=>import("@/pages/student/student-profile-page"))
@@ -103,7 +103,7 @@ export default function App() {
           </Route>
 
           <Route element={<Guard permission="FINANCE_VIEW" />}>
-            <Route path="finance" element={<FinancePage />} />
+            <Route path="finance" element={<Suspense fallback={<div className="p-8">Loading finance…</div>}><FinancePage /></Suspense>} />
           </Route>
 
           <Route element={<Guard anyPermissions={["GRADE_ENCODE", "GRADE_REVIEW", "GRADE_LOCK", "GRADE_APPROVE"]} />}>

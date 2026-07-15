@@ -22,6 +22,7 @@
 - `FacultyPortalAccess` validates the linked faculty record and assigned schedule/adviser ownership.
 - `StudentPortalAccess` derives the linked student and validates enrollment/request ownership.
 - The frontend guards routes and filters navigation, but backend checks remain authoritative.
+- Finance separates routine posting/session operation from request, approval, disbursement, receipt/template setup, closeout, and reporting permissions. Separation-of-duties checks also compare actor IDs in the service transaction.
 
 See [[User Roles]] for the seeded role matrix.
 
@@ -41,4 +42,3 @@ Only `/api/v1/auth/login` and `/api/v1/auth/refresh` are anonymous. All other re
 - [[User Roles]]
 - [[Faculty Portal]]
 - [[Student Portal]]
-

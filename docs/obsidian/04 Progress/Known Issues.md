@@ -1,77 +1,81 @@
 # Known Issues
 
+## Seeded Finance Rates Require Institutional Approval
+
+- Severity: High before production
+- Module: Finance / Fee Setup
+- Current behavior: V17 seeds a coherent representative PHP college fee schedule for development and demonstrations.
+- Expected behavior: Finance leadership replaces or formally approves every amount, applicability scope, installment date, and receipt assignment before production enrollment assessment.
+- Status: Open operational decision; see [[Billing]].
+
+## Finance Concurrency Suite Is Not Yet Automated
+
+- Severity: Medium
+- Module: Finance / Testing
+- Current behavior: Assessment locking, unique request IDs, locked receipt allocation, and refund reservation are implemented and core service tests pass. Dedicated multi-thread PostgreSQL mutation tests remain to be added.
+- Expected behavior: CI proves simultaneous payments cannot overpay, retries do not skip ORs, reservations cannot overcommit credit, and adjustment/payment races converge.
+- Status: Test coverage gap; see [[Finance Test Cases]].
+
+## Finance Browser Regression Suite Is Incomplete
+
+- Severity: Medium
+- Module: Finance / Frontend
+- Current behavior: Production build passes and workspaces are implemented, but the complete cashier-through-closeout, approval, OR exhaustion, cancellation, and cross-student denial suite has not been automated.
+- Expected behavior: Stable cross-role browser tests cover the modernized workflow.
+- Status: Open verification work.
+
+## Registrar Finance Resolution Display Needs Visual Verification
+
+- Severity: Low
+- Module: Enrollment / Finance
+- Current behavior: The backend returns stable `FINANCE_RESOLUTION_REQUIRED` and the UI shows the blocking API message. A dedicated inline resolution-status panel is not yet present.
+- Expected behavior: Registrar can see resolution state before attempting cancellation.
+- Status: UI enhancement.
+
 ## Frontend Lint Fails
 
 - Severity: Medium
 - Module: Frontend / Testing
-- Current behavior: `npm run lint` exits with 42 errors and 9 warnings across E2E specs, shared UI files, hooks, and large module pages.
-- Expected behavior: ESLint exits successfully with no errors and an agreed warning policy.
-- Suspected cause: Unused values, explicit `any` types, React fast-refresh export rules, effect-driven state updates, and related rule violations accumulated during MVP development.
-- Temporary workaround: `npm run build` still succeeds; treat lint as a required cleanup gate rather than proof the application cannot run.
-- Status: Open
-
-## PostgreSQL Migration Test Skipped
-
-- Severity: Medium
-- Module: Database / Testing
-- Current behavior: `mvn test` passes 75 tests and skips `PostgresMigrationTests` when Docker is unavailable.
-- Expected behavior: Flyway `V1`–`V15` apply to PostgreSQL 16 and Hibernate validates the resulting schema.
-- Suspected cause: Docker daemon unavailable to Testcontainers.
-- Temporary workaround: Run `mvn test` on a machine with Docker enabled.
-- Status: Open
+- Current behavior: Pre-existing repo-wide ESLint errors and warnings remain outside the Finance build gate.
+- Expected behavior: ESLint exits successfully with an agreed warning policy.
+- Status: Open.
 
 ## Existing Academic Setup E2E Failure Artifacts
 
 - Severity: Medium
 - Module: Academic Setup / Testing
-- Current behavior: `frontend/test-results/` contains failure screenshots, traces, and videos for department, program, and curriculum tests.
-- Expected behavior: A fresh configured Playwright run establishes current pass/fail status.
-- Suspected cause: Not determined from artifacts alone; test environment or implementation may have changed.
-- Temporary workaround: Start a clean stack and rerun the relevant specifications.
-- Status: Verification needed
+- Current behavior: Stored failure artifacts require a fresh configured Playwright run.
+- Status: Verification needed.
 
 ## Faculty Top-Level Routes Redirect
 
 - Severity: Low
 - Module: Faculty Portal
-- Current behavior: `/faculty/attendance`, `/faculty/content`, and `/faculty/reports` redirect to `/faculty/classes`.
-- Expected behavior: Product decision needed: redirect to class selection or provide dedicated index pages.
-- Suspected cause: `FacultySectionIndex` intentionally returns a redirect.
-- Temporary workaround: Select a class and use its workspace tabs/actions.
-- Status: Open question
+- Current behavior: `/faculty/attendance`, `/faculty/content`, and `/faculty/reports` redirect to class selection.
+- Status: Product decision required.
 
 ## Large Frontend Main Chunk
 
 - Severity: Low
 - Module: Frontend
-- Current behavior: `npm run build` succeeds but emits a chunk-size warning; the main minified chunk is approximately 3.1 MB before gzip.
-- Expected behavior: Keep initial bundles within an agreed performance budget.
-- Suspected cause: Large administrative pages and shared imports remain in the main bundle.
-- Temporary workaround: Current build is functional; use route/component code splitting when optimizing.
-- Status: Open
+- Current behavior: `npm run build` passes but reports an approximately 3.1 MB pre-gzip main chunk. Finance itself is route-lazy.
+- Status: Performance optimization.
 
 ## Local Development Defaults Are Unsafe for Production
 
 - Severity: High if deployed unchanged
 - Module: Security / Deployment
-- Current behavior: Compose and application configuration include fallback database credentials and JWT secret for local use.
-- Expected behavior: Production supplies unique secrets outside source control.
-- Suspected cause: MVP local-development convenience.
-- Temporary workaround: Override all credential/secret environment variables.
-- Status: Must resolve before production
+- Current behavior: Local fallback database credentials and JWT secret exist.
+- Status: Must resolve before production.
 
 ## Redis Is Provisioned but Unused
 
 - Severity: Low
 - Module: Deployment
-- Current behavior: Compose starts Redis, but no verified application integration uses it.
-- Expected behavior: Remove it from the MVP stack or document and implement its purpose.
-- Suspected cause: Planned infrastructure was scaffolded before a use case was implemented.
-- Temporary workaround: Redis may remain unused locally.
-- Status: Open
+- Status: Open.
 
 ## Related Notes
 
 - [[In Progress]]
+- [[Finance Modernization]]
 - [[Development Setup]]
-- [[MVP Completion Checklist]]

@@ -2,6 +2,7 @@ package com.school.sis.fee.service;
 
 import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.NotFoundException;
+import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.response.PageResponse;
 import com.school.sis.fee.dto.FeeItemRequest;
 import com.school.sis.fee.dto.FeeItemResponse;
@@ -68,6 +69,7 @@ public class FeeService {
 
     @Transactional
     public FeeItemResponse create(FeeItemRequest request) {
+        validateRules(request.rules());
         FeeItem feeItem = new FeeItem();
         apply(feeItem, request);
         FeeItem saved = feeItemRepository.save(feeItem);
@@ -79,6 +81,7 @@ public class FeeService {
 
     @Transactional
     public FeeItemResponse update(UUID id, FeeItemRequest request) {
+        validateRules(request.rules());
         FeeItem feeItem = findFeeItem(id);
         apply(feeItem, request);
         if (request.rules() != null) {
@@ -113,6 +116,46 @@ public class FeeService {
             return;
         }
         requests.forEach(request -> feeRuleRepository.save(toRule(feeItem, request)));
+    }
+
+    private void validateRules(List<FeeRuleRequest> rules) {
+        if (rules == null) return;
+        for (FeeRuleRequest rule : rules) {
+            switch (rule.computationType()) {
+                case PER_PROGRAM -> require(rule.programId() != null, "PER_PROGRAM rules require a program");
+                case PER_YEAR_LEVEL -> require(rule.yearLevel() != null, "PER_YEAR_LEVEL rules require a year level");
+                case PER_SEMESTER -> require(rule.semesterId() != null, "PER_SEMESTER rules require a semester");
+                default -> { }
+            }
+        }
+        for (int first = 0; first < rules.size(); first++) {
+            for (int second = first + 1; second < rules.size(); second++) {
+                FeeRuleRequest left = rules.get(first);
+                FeeRuleRequest right = rules.get(second);
+                if (left.schoolYearId().equals(right.schoolYearId())
+                        && specificity(left) == specificity(right)
+                        && overlaps(left.semesterId(), right.semesterId())
+                        && overlaps(left.programId(), right.programId())
+                        && overlaps(left.yearLevel(), right.yearLevel())) {
+                    throw new BusinessRuleException("AMBIGUOUS_FEE_RULE",
+                            "Equally specific fee rules cannot overlap for the same school year");
+                }
+            }
+        }
+    }
+
+    private int specificity(FeeRuleRequest rule) {
+        return (rule.semesterId() == null ? 0 : 1)
+                + (rule.programId() == null ? 0 : 1)
+                + (rule.yearLevel() == null ? 0 : 1);
+    }
+
+    private boolean overlaps(Object left, Object right) {
+        return left == null || right == null || left.equals(right);
+    }
+
+    private void require(boolean condition, String message) {
+        if (!condition) throw new BusinessRuleException("INVALID_FEE_RULE", message);
     }
 
     private FeeRule toRule(FeeItem feeItem, FeeRuleRequest request) {

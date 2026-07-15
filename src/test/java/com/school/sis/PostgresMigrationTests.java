@@ -31,8 +31,18 @@ class PostgresMigrationTests {
     @Test void allMigrationsApplyAndHibernateValidates() {
         Integer count = jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class);
         String latest = jdbc.queryForObject("select version from flyway_schema_history order by installed_rank desc limit 1", String.class);
-        assertThat(count).isEqualTo(13);
-        assertThat(latest).isEqualTo("13");
+        assertThat(count).isEqualTo(17);
+        assertThat(latest).isEqualTo("17");
+
+        Integer financeManager = jdbc.queryForObject("select count(*) from roles where name='FINANCE_MANAGER'", Integer.class);
+        Integer financePermissions = jdbc.queryForObject("select count(*) from permissions where name like 'FINANCE_%'", Integer.class);
+        assertThat(financeManager).isEqualTo(1);
+        assertThat(financePermissions).isGreaterThanOrEqualTo(14);
+
+        Integer seededFees = jdbc.queryForObject("select count(*) from fee_items", Integer.class);
+        Integer financeTransactions = jdbc.queryForObject("select count(*) from assessments", Integer.class);
+        assertThat(seededFees).isEqualTo(15);
+        assertThat(financeTransactions).isZero();
 
         jdbc.update("insert into departments(id,department_code,department_name,status) values (?::uuid,?,?,?)",
                 "10000000-0000-0000-0000-000000000001", "ACCOUNT-TEST", "Account Test", "ACTIVE");

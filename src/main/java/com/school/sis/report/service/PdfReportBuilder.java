@@ -9,6 +9,9 @@ import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.util.Matrix;
+
+import java.awt.Color;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -57,6 +60,21 @@ class PdfReportBuilder implements AutoCloseable {
 
     void field(String label, Object value) {
         text(label + ": " + value(value), 9, regular);
+    }
+
+    void watermark(String value) {
+        try {
+            content.saveGraphicsState();
+            content.setNonStrokingColor(new Color(190, 190, 190));
+            content.beginText();
+            content.setFont(bold, 48);
+            content.setTextMatrix(Matrix.getRotateInstance(Math.toRadians(35), 95, 300));
+            content.showText(sanitize(value));
+            content.endText();
+            content.restoreGraphicsState();
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to draw PDF watermark", exception);
+        }
     }
 
     void paragraph(String value) {

@@ -33,10 +33,15 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(exception.getMessage()));
     }
 
-    @ExceptionHandler({BusinessRuleException.class, IllegalArgumentException.class})
-    public ResponseEntity<ApiResponse<Void>> handleBusinessRule(RuntimeException exception) {
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessRule(BusinessRuleException exception) {
         return ResponseEntity.badRequest()
-                .body(ApiResponse.failure(exception.getMessage()));
+                .body(ApiResponse.failure(exception.getCode(), exception.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_ARGUMENT", exception.getMessage()));
     }
 
     @ExceptionHandler(BadCredentialsException.class)
@@ -67,5 +72,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.failure("A database integrity constraint was violated. This usually means a duplicate record exists or a required related record is missing."));
+    }
+
+    @ExceptionHandler({org.springframework.orm.ObjectOptimisticLockingFailureException.class,
+            org.springframework.dao.CannotAcquireLockException.class})
+    public ResponseEntity<ApiResponse<Void>> handleConcurrentFinanceUpdate(RuntimeException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.failure("CONCURRENT_FINANCE_UPDATE", "The finance record changed while this request was being processed. Refresh and try again."));
     }
 }

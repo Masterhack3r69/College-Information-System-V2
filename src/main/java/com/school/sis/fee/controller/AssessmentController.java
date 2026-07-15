@@ -4,7 +4,6 @@ import com.school.sis.common.response.ApiResponse;
 import com.school.sis.common.response.PageResponse;
 import com.school.sis.fee.dto.AssessmentResponse;
 import com.school.sis.fee.dto.AssessmentSearchCriteria;
-import com.school.sis.fee.dto.AssessmentStatusRequest;
 import com.school.sis.fee.dto.AssessmentSummaryResponse;
 import com.school.sis.fee.entity.AssessmentStatus;
 import com.school.sis.fee.service.AssessmentService;
@@ -16,7 +15,6 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -97,10 +95,4 @@ public class AssessmentController {
         return ApiResponse.success("Payment posted", paymentService.post(id, request, user));
     }
 
-    @PostMapping("/assessment-payments/{id}/void")
-    @PreAuthorize("hasAuthority('FINANCE_PAYMENT')")
-    public ApiResponse<PaymentResponse> voidPayment(@PathVariable UUID id, @Valid @RequestBody PaymentVoidRequest request,
-                                                    @AuthenticationPrincipal SisUserDetails user) {
-        return ApiResponse.success("Payment voided", paymentService.voidPayment(id, request.reason(), user));
-    }
 }

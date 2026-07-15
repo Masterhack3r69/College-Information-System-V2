@@ -1,6 +1,7 @@
 export type ApiResponse<T> = {
   success: boolean
   message: string
+  code?: string
   data: T
   errors?: { field: string; message: string }[]
   timestamp: string
@@ -732,7 +733,7 @@ export interface Section {
 }
 
 export type AssessmentStatus =
-  "UNPAID" | "PARTIAL" | "PAID" | "CANCELLED" | "REFUNDED"
+  "UNPAID" | "PARTIAL" | "PAID" | "CREDIT_BALANCE" | "CANCEL_PENDING" | "CANCELLED" | "REFUNDED"
 export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "E_WALLET" | "CHECK"
 export type PaymentStatus = "POSTED" | "VOIDED"
 export type FeeCategory = "TUITION" | "LABORATORY" | "MISCELLANEOUS" | "OTHER"
@@ -773,6 +774,10 @@ export type Payment = {
   voidedAt?: string
   voidedByUserId?: string
   voidedByName?: string
+  requestId?: string
+  cashierSessionId?: string
+  balanceAfter?: number
+  legacyReceipt: boolean
 }
 export type AssessmentSummary = {
   id: string
@@ -784,6 +789,9 @@ export type AssessmentSummary = {
   semesterName: string
   totalAssessment: number
   amountPaid: number
+  refundedAmount: number
+  netPaidAmount: number
+  creditBalance: number
   balance: number
   status: AssessmentStatus
 }
@@ -791,12 +799,15 @@ export type Assessment = AssessmentSummary & {
   schoolYearId: string
   semesterId: string
   totalUnits: number
+  baseAssessmentAmount: number
+  adjustmentAmount: number
   tuitionAmount: number
   laboratoryFeeAmount: number
   miscellaneousFeeAmount: number
   otherFeeAmount: number
   discountAmount: number
   penaltyAmount: number
+  requiresFinanceReview: boolean
   items: AssessmentItem[]
   payments: Payment[]
 }

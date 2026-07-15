@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,9 +25,13 @@ public class PaymentService {
     private final AssessmentPaymentRepository payments;
     private final UserRepository users;
     private final AuditService audit;
+    private final FinanceLedgerService ledger;
+    private final FinanceOperationsService operations;
 
-    public PaymentService(AssessmentRepository assessments, AssessmentPaymentRepository payments, UserRepository users, AuditService audit) {
+    public PaymentService(AssessmentRepository assessments, AssessmentPaymentRepository payments, UserRepository users, AuditService audit,
+                          FinanceLedgerService ledger, FinanceOperationsService operations) {
         this.assessments = assessments; this.payments = payments; this.users = users; this.audit = audit;
+        this.ledger = ledger; this.operations = operations;
     }
 
     @Transactional(readOnly = true)
@@ -39,44 +42,33 @@ public class PaymentService {
 
     @Transactional
     public PaymentResponse post(UUID assessmentId, PaymentRequest request, SisUserDetails principal) {
-        Assessment assessment = assessments.findById(assessmentId).orElseThrow(() -> new NotFoundException("Assessment not found"));
-        if (assessment.getStatus() == AssessmentStatus.CANCELLED || assessment.getStatus() == AssessmentStatus.REFUNDED) {
+        var existing = payments.findByRequestId(request.requestId());
+        if (existing.isPresent()) return toResponse(existing.get());
+        Assessment assessment = ledger.lock(assessmentId);
+        existing = payments.findByRequestId(request.requestId());
+        if (existing.isPresent()) return toResponse(existing.get());
+        if (assessment.getStatus() == AssessmentStatus.CANCELLED || assessment.getStatus() == AssessmentStatus.REFUNDED
+                || assessment.getStatus() == AssessmentStatus.CANCEL_PENDING || assessment.getStatus() == AssessmentStatus.CREDIT_BALANCE) {
             throw new BusinessRuleException("Payments cannot be posted to this assessment");
         }
-        String orNumber = request.officialReceiptNumber().trim();
-        if (payments.existsByOfficialReceiptNumberIgnoreCase(orNumber)) throw new BusinessRuleException("Official receipt number already exists");
         if (request.amount().compareTo(assessment.getBalance()) > 0) throw new BusinessRuleException("Payment cannot exceed the remaining balance");
         User cashier = currentUser(principal);
+        FinanceOperationsService.ReceiptCheckout checkout = operations.checkout(principal);
         AssessmentPayment payment = new AssessmentPayment();
-        payment.setAssessment(assessment); payment.setStudent(assessment.getStudent()); payment.setOfficialReceiptNumber(orNumber);
+        payment.setAssessment(assessment); payment.setStudent(assessment.getStudent()); payment.setOfficialReceiptNumber(checkout.officialReceiptNumber());
         payment.setAmount(request.amount()); payment.setPaymentMethod(request.paymentMethod());
         payment.setExternalReference(clean(request.externalReference())); payment.setRemarks(clean(request.remarks())); payment.setCashier(cashier);
-        AssessmentPayment saved = payments.save(payment);
-        refreshTotals(assessment);
+        payment.setRequestId(request.requestId()); payment.setCashierSessionId(checkout.sessionId()); payment.setReceiptSeriesId(checkout.seriesId());
+        payment.setReceiptSequence(checkout.sequence()); payment.setLegacyReceipt(false);
+        AssessmentPayment saved = payments.saveAndFlush(payment);
+        operations.allocatePayment(saved.getId(), assessmentId, saved.getAmount());
+        ledger.recompute(assessment);
+        saved.setBalanceAfter(assessment.getBalance());
+        payments.saveAndFlush(saved);
         audit.log(cashier, "PAYMENT_POSTED", "FEE", "AssessmentPayment", saved.getId(), null,
-                Map.of("assessmentId", assessmentId, "officialReceiptNumber", orNumber, "amount", saved.getAmount()));
+                Map.of("assessmentId", assessmentId, "officialReceiptNumber", saved.getOfficialReceiptNumber(), "amount", saved.getAmount(),
+                        "cashierSessionId", checkout.sessionId()));
         return toResponse(saved);
-    }
-
-    @Transactional
-    public PaymentResponse voidPayment(UUID paymentId, String reason, SisUserDetails principal) {
-        AssessmentPayment payment = payments.findById(paymentId).orElseThrow(() -> new NotFoundException("Payment not found"));
-        if (payment.getStatus() == PaymentStatus.VOIDED) throw new BusinessRuleException("Payment is already voided");
-        User user = currentUser(principal);
-        payment.setStatus(PaymentStatus.VOIDED); payment.setVoidReason(reason.trim()); payment.setVoidedAt(Instant.now()); payment.setVoidedBy(user);
-        refreshTotals(payment.getAssessment());
-        audit.log(user, "PAYMENT_VOIDED", "FEE", "AssessmentPayment", paymentId,
-                Map.of("status", "POSTED"), Map.of("status", "VOIDED", "reason", reason.trim()));
-        return toResponse(payment);
-    }
-
-    private void refreshTotals(Assessment assessment) {
-        BigDecimal paid = payments.findByAssessmentIdAndStatus(assessment.getId(), PaymentStatus.POSTED).stream()
-                .map(AssessmentPayment::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        assessment.setAmountPaid(paid);
-        assessment.setBalance(assessment.getTotalAssessment().subtract(paid).max(BigDecimal.ZERO));
-        assessment.setStatus(paid.signum() == 0 ? AssessmentStatus.UNPAID
-                : paid.compareTo(assessment.getTotalAssessment()) >= 0 ? AssessmentStatus.PAID : AssessmentStatus.PARTIAL);
     }
 
     private User currentUser(SisUserDetails principal) {
@@ -89,6 +81,7 @@ public class PaymentService {
                 payment.getOfficialReceiptNumber(), payment.getAmount(), payment.getPaymentMethod(), payment.getExternalReference(), payment.getRemarks(),
                 payment.getPaidAt(), payment.getCashier().getId(), payment.getCashier().getFullName(), payment.getStatus(), payment.getVoidReason(),
                 payment.getVoidedAt(), payment.getVoidedBy() == null ? null : payment.getVoidedBy().getId(),
-                payment.getVoidedBy() == null ? null : payment.getVoidedBy().getFullName());
+                payment.getVoidedBy() == null ? null : payment.getVoidedBy().getFullName(), payment.getRequestId(),
+                payment.getCashierSessionId(), payment.getBalanceAfter(), payment.isLegacyReceipt());
     }
 }

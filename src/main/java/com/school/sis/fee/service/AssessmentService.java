@@ -12,7 +12,6 @@ import com.school.sis.enrollment.repository.EnrollmentRepository;
 import com.school.sis.fee.dto.AssessmentItemResponse;
 import com.school.sis.fee.dto.AssessmentResponse;
 import com.school.sis.fee.dto.AssessmentSearchCriteria;
-import com.school.sis.fee.dto.AssessmentStatusRequest;
 import com.school.sis.fee.dto.AssessmentSummaryResponse;
 import com.school.sis.fee.entity.Assessment;
 import com.school.sis.fee.entity.AssessmentItem;
@@ -37,6 +36,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.LinkedHashMap;
 
 @Service
 public class AssessmentService {
@@ -46,19 +46,22 @@ public class AssessmentService {
     private final EnrollmentRepository enrollmentRepository;
     private final FeeRuleRepository feeRuleRepository;
     private final AuditService auditService;
+    private final FinanceLedgerService financeLedger;
 
     public AssessmentService(
             AssessmentRepository assessmentRepository,
             AssessmentPaymentRepository paymentRepository,
             EnrollmentRepository enrollmentRepository,
             FeeRuleRepository feeRuleRepository,
-            AuditService auditService
+            AuditService auditService,
+            FinanceLedgerService financeLedger
     ) {
         this.assessmentRepository = assessmentRepository;
         this.paymentRepository = paymentRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.feeRuleRepository = feeRuleRepository;
         this.auditService = auditService;
+        this.financeLedger = financeLedger;
     }
 
     @Transactional(readOnly = true)
@@ -133,34 +136,15 @@ public class AssessmentService {
         if (assessment.getStatus() == AssessmentStatus.PAID
                 || assessment.getStatus() == AssessmentStatus.CANCELLED
                 || assessment.getStatus() == AssessmentStatus.REFUNDED
-                || assessment.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
+                || financeLedger.hasFinancialActivity(id)
+                || financeLedger.hasStartedInstallmentPlan(id)) {
             throw new BusinessRuleException("Only unpaid active assessments can be recalculated");
         }
         validateEnrollmentForAssessment(assessment.getEnrollment());
         calculate(assessment, assessment.getEnrollment());
+        financeLedger.regenerateUnstartedInstallmentPlan(assessment);
         auditService.log("ASSESSMENT_RECALCULATED", "FEE", "Assessment", assessment.getId(), null,
                 Map.of("enrollmentId", assessment.getEnrollment().getId(), "totalAssessment", assessment.getTotalAssessment()));
-        return toResponse(assessment);
-    }
-
-    @Transactional
-    public AssessmentResponse updateStatus(UUID id, AssessmentStatusRequest request) {
-        Assessment assessment = findAssessment(id);
-        BigDecimal amountPaid = request.amountPaid() == null ? assessment.getAmountPaid() : request.amountPaid();
-        if (amountPaid.compareTo(BigDecimal.ZERO) < 0) {
-            throw new BusinessRuleException("Amount paid cannot be negative");
-        }
-        if (amountPaid.compareTo(assessment.getTotalAssessment()) > 0) {
-            throw new BusinessRuleException("Amount paid cannot exceed total assessment");
-        }
-        AssessmentStatus oldStatus = assessment.getStatus();
-        BigDecimal oldAmountPaid = assessment.getAmountPaid();
-        assessment.setAmountPaid(amountPaid);
-        assessment.setStatus(request.status());
-        assessment.setBalance(assessment.getTotalAssessment().subtract(amountPaid));
-        auditService.log("ASSESSMENT_STATUS_UPDATED", "FEE", "Assessment", assessment.getId(),
-                Map.of("status", oldStatus.name(), "amountPaid", oldAmountPaid),
-                Map.of("status", assessment.getStatus().name(), "amountPaid", assessment.getAmountPaid(), "balance", assessment.getBalance()));
         return toResponse(assessment);
     }
 
@@ -169,13 +153,13 @@ public class AssessmentService {
         if (subjects.isEmpty()) {
             throw new BusinessRuleException("Assessment requires at least one enrolled subject");
         }
-        List<FeeRule> rules = feeRuleRepository.findApplicableRules(
+        List<FeeRule> rules = mostSpecificRules(feeRuleRepository.findApplicableRules(
                 enrollment.getSchoolYear().getId(),
                 enrollment.getSemester().getId(),
                 enrollment.getProgram().getId(),
-                enrollment.getStudent().getYearLevel(),
+                enrollment.getYearLevel(),
                 ActiveStatus.ACTIVE
-        );
+        ));
         BigDecimal totalUnits = totalUnits(subjects);
         assessment.setTotalUnits(totalUnits);
         assessment.setItems(rules.stream()
@@ -221,6 +205,11 @@ public class AssessmentService {
         assessment.setLaboratoryFeeAmount(laboratory);
         assessment.setMiscellaneousFeeAmount(miscellaneous);
         assessment.setOtherFeeAmount(other);
+        assessment.setBaseAssessmentAmount(tuition.add(laboratory).add(miscellaneous).add(other));
+        assessment.setAdjustmentAmount(BigDecimal.ZERO);
+        assessment.setRefundedAmount(BigDecimal.ZERO);
+        assessment.setNetPaidAmount(assessment.getAmountPaid());
+        assessment.setCreditBalance(BigDecimal.ZERO);
         assessment.setTotalAssessment(total.max(BigDecimal.ZERO));
         assessment.setBalance(assessment.getTotalAssessment().subtract(assessment.getAmountPaid()).max(BigDecimal.ZERO));
         if (assessment.getAmountPaid().compareTo(BigDecimal.ZERO) == 0) {
@@ -281,9 +270,15 @@ public class AssessmentService {
                 assessment.getOtherFeeAmount(),
                 assessment.getDiscountAmount(),
                 assessment.getPenaltyAmount(),
+                assessment.getBaseAssessmentAmount(),
+                assessment.getAdjustmentAmount(),
                 assessment.getTotalAssessment(),
                 assessment.getAmountPaid(),
+                assessment.getRefundedAmount(),
+                assessment.getNetPaidAmount(),
                 assessment.getBalance(),
+                assessment.getCreditBalance(),
+                assessment.isRequiresFinanceReview(),
                 assessment.getStatus(),
                 assessment.getItems().stream()
                         .sorted(Comparator.comparing(AssessmentItem::getDescription))
@@ -294,7 +289,8 @@ public class AssessmentService {
                                 payment.getOfficialReceiptNumber(), payment.getAmount(), payment.getPaymentMethod(), payment.getExternalReference(), payment.getRemarks(),
                                 payment.getPaidAt(), payment.getCashier().getId(), payment.getCashier().getFullName(), payment.getStatus(), payment.getVoidReason(),
                                 payment.getVoidedAt(), payment.getVoidedBy() == null ? null : payment.getVoidedBy().getId(),
-                                payment.getVoidedBy() == null ? null : payment.getVoidedBy().getFullName()))
+                                payment.getVoidedBy() == null ? null : payment.getVoidedBy().getFullName(), payment.getRequestId(),
+                                payment.getCashierSessionId(), payment.getBalanceAfter(), payment.isLegacyReceipt()))
                         .toList()
         );
     }
@@ -311,9 +307,32 @@ public class AssessmentService {
                 assessment.getSemester().getName(),
                 assessment.getTotalAssessment(),
                 assessment.getAmountPaid(),
+                assessment.getRefundedAmount(),
+                assessment.getNetPaidAmount(),
                 assessment.getBalance(),
+                assessment.getCreditBalance(),
                 assessment.getStatus()
         );
+    }
+
+    private List<FeeRule> mostSpecificRules(List<FeeRule> rules) {
+        Map<UUID, List<FeeRule>> byFee = new LinkedHashMap<>();
+        rules.forEach(rule -> byFee.computeIfAbsent(rule.getFeeItem().getId(), ignored -> new java.util.ArrayList<>()).add(rule));
+        return byFee.values().stream().map(candidates -> {
+            int maximum = candidates.stream().mapToInt(this::specificity).max().orElse(0);
+            List<FeeRule> winners = candidates.stream().filter(rule -> specificity(rule) == maximum).toList();
+            if (winners.size() != 1) {
+                throw new BusinessRuleException("AMBIGUOUS_FEE_RULE",
+                        "More than one equally specific fee rule matches " + candidates.getFirst().getFeeItem().getFeeCode());
+            }
+            return winners.getFirst();
+        }).sorted(Comparator.comparing(rule -> rule.getFeeItem().getFeeCode())).toList();
+    }
+
+    private int specificity(FeeRule rule) {
+        return (rule.getSemester() == null ? 0 : 1)
+                + (rule.getProgram() == null ? 0 : 1)
+                + (rule.getYearLevel() == null ? 0 : 1);
     }
 
     private AssessmentItemResponse toItemResponse(AssessmentItem item) {

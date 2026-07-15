@@ -70,17 +70,27 @@ export type StudentProgress = {
 }
 export type StudentAssessment = {
   id: string
+  baseAssessmentAmount: number
+  adjustmentAmount: number
   totalAssessment: number
   amountPaid: number
+  refundedAmount: number
+  netPaidAmount: number
   balance: number
+  creditBalance: number
   status: string
   schoolYear: string
   semesterName: string
+  items: unknown
+  installments: unknown
+  adjustments: unknown
 }
 export type StudentPayment = {
   id: string
   receiptNumber: string
   amount: number
+  balanceAfter?: number
+  legacyReceipt: boolean
   paymentMethod: string
   paidAt: string
   status: string

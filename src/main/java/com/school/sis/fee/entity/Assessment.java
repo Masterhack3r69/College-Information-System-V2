@@ -18,6 +18,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -70,11 +71,32 @@ public class Assessment extends AuditableEntity {
     @Column(name = "total_assessment", nullable = false)
     private BigDecimal totalAssessment = BigDecimal.ZERO;
 
+    @Column(name = "base_assessment_amount", nullable = false)
+    private BigDecimal baseAssessmentAmount = BigDecimal.ZERO;
+
+    @Column(name = "adjustment_amount", nullable = false)
+    private BigDecimal adjustmentAmount = BigDecimal.ZERO;
+
     @Column(name = "amount_paid", nullable = false)
     private BigDecimal amountPaid = BigDecimal.ZERO;
 
     @Column(nullable = false)
     private BigDecimal balance = BigDecimal.ZERO;
+
+    @Column(name = "refunded_amount", nullable = false)
+    private BigDecimal refundedAmount = BigDecimal.ZERO;
+
+    @Column(name = "net_paid_amount", nullable = false)
+    private BigDecimal netPaidAmount = BigDecimal.ZERO;
+
+    @Column(name = "credit_balance", nullable = false)
+    private BigDecimal creditBalance = BigDecimal.ZERO;
+
+    @Column(name = "requires_finance_review", nullable = false)
+    private boolean requiresFinanceReview;
+
+    @Version
+    private long version;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -113,10 +135,23 @@ public class Assessment extends AuditableEntity {
     public void setPenaltyAmount(BigDecimal penaltyAmount) { this.penaltyAmount = penaltyAmount; }
     public BigDecimal getTotalAssessment() { return totalAssessment; }
     public void setTotalAssessment(BigDecimal totalAssessment) { this.totalAssessment = totalAssessment; }
+    public BigDecimal getBaseAssessmentAmount() { return baseAssessmentAmount; }
+    public void setBaseAssessmentAmount(BigDecimal value) { baseAssessmentAmount = value; }
+    public BigDecimal getAdjustmentAmount() { return adjustmentAmount; }
+    public void setAdjustmentAmount(BigDecimal value) { adjustmentAmount = value; }
     public BigDecimal getAmountPaid() { return amountPaid; }
     public void setAmountPaid(BigDecimal amountPaid) { this.amountPaid = amountPaid; }
     public BigDecimal getBalance() { return balance; }
     public void setBalance(BigDecimal balance) { this.balance = balance; }
+    public BigDecimal getRefundedAmount() { return refundedAmount; }
+    public void setRefundedAmount(BigDecimal value) { refundedAmount = value; }
+    public BigDecimal getNetPaidAmount() { return netPaidAmount; }
+    public void setNetPaidAmount(BigDecimal value) { netPaidAmount = value; }
+    public BigDecimal getCreditBalance() { return creditBalance; }
+    public void setCreditBalance(BigDecimal value) { creditBalance = value; }
+    public boolean isRequiresFinanceReview() { return requiresFinanceReview; }
+    public void setRequiresFinanceReview(boolean value) { requiresFinanceReview = value; }
+    public long getVersion() { return version; }
     public AssessmentStatus getStatus() { return status; }
     public void setStatus(AssessmentStatus status) { this.status = status; }
     public List<AssessmentItem> getItems() { return items; }

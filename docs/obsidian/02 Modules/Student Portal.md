@@ -18,7 +18,7 @@ Users with the `STUDENT` role, `STUDENT_PORTAL_ACCESS`, and a linked `student_id
 - Contact/emergency profile updates and mandatory initial password change.
 - Online enrollment window, draft/subject selection, validation, and submission.
 - Confirmed schedule, locked grades, curriculum progress, and visible finalized attendance.
-- Assessment and payment history.
+- All-term assessment itemization, installments, adjustments, gross/refunded/net totals, credits, payment history, and owned receipt PDFs.
 - Portal and class announcements, published materials, downloadable forms.
 - Document/clearance service requests, cancellation, fulfillment download.
 - Registrar controls for term settings, notices, forms, requests, fulfillment, and enrollment return.
@@ -35,6 +35,7 @@ Provision student account → force password change → enter portal → use ena
 - Academic grades shown to students come from locked academic records.
 - Attendance is shown only when portal settings allow it and sessions are finalized.
 - A student may cancel only a `SUBMITTED` service request.
+- Student receipt download requires `STUDENT_FINANCE_SELF` and server-side payment ownership validation; each access is audited.
 
 ## Frontend Implementation
 
@@ -52,6 +53,8 @@ Routes under `/student`: dashboard, enrollment, schedule, academics, finance, an
 
 Student endpoints use `/api/v1/student/me/*`; administrative endpoints use `/api/v1/student-portal/admin/*`.
 
+Finance receipt: `GET /api/v1/student/me/payments/{paymentId}/receipt`.
+
 ## Known Gaps
 
 - No comprehensive student browser test suite was found.
@@ -62,4 +65,3 @@ Student endpoints use `/api/v1/student/me/*`; administrative endpoints use `/api
 - [[Enrollment]]
 - [[Billing]]
 - [[Authentication and Roles]]
-

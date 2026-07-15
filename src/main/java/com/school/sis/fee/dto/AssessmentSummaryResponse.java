@@ -15,7 +15,10 @@ public record AssessmentSummaryResponse(
         String semesterName,
         BigDecimal totalAssessment,
         BigDecimal amountPaid,
+        BigDecimal refundedAmount,
+        BigDecimal netPaidAmount,
         BigDecimal balance,
+        BigDecimal creditBalance,
         AssessmentStatus status
 ) {
 }

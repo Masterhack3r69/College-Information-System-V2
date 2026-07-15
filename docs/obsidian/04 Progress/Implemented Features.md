@@ -24,6 +24,8 @@
 
 ## Finance and Grading
 
+- Controlled Finance suite: derived assessment ledgers, independent approvals, refunds/reversals, cancellation resolution, installments, managed OR series, cashier sessions/closeout, reports/exports, and student-owned receipt PDFs.
+
 - [x] Fee setup and itemized assessment generation/recalculation
 - [x] Payments, unique official receipts, balances, and controlled voids
 - [x] Gradebook items, scores, overrides, computation, submit/review/approve/lock
@@ -52,4 +54,3 @@
 - [[MVP Dashboard]]
 - [[MVP Completion Checklist]]
 - [[Known Issues]]
-

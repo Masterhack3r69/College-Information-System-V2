@@ -18,6 +18,7 @@ import com.school.sis.fee.entity.AssessmentItem;
 import com.school.sis.fee.repository.AssessmentRepository;
 import com.school.sis.fee.entity.AssessmentPayment;
 import com.school.sis.fee.repository.AssessmentPaymentRepository;
+import com.school.sis.fee.service.FinanceOperationsService;
 import com.school.sis.grade.entity.AcademicRecord;
 import com.school.sis.grade.entity.Grade;
 import com.school.sis.grade.repository.AcademicRecordRepository;
@@ -36,6 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +62,7 @@ public class ReportService {
     private final GeneratedReportRepository generatedReportRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final FinanceOperationsService financeOperations;
 
     public ReportService(
             SchoolProperties schoolProperties,
@@ -75,7 +78,8 @@ public class ReportService {
             GradeRepository gradeRepository,
             GeneratedReportRepository generatedReportRepository,
             UserRepository userRepository,
-            AuditService auditService
+            AuditService auditService,
+            FinanceOperationsService financeOperations
     ) {
         this.schoolProperties = schoolProperties;
         this.studentRepository = studentRepository;
@@ -91,6 +95,7 @@ public class ReportService {
         this.generatedReportRepository = generatedReportRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
+        this.financeOperations = financeOperations;
     }
 
     @Transactional
@@ -243,9 +248,43 @@ public class ReportService {
     public PdfReport paymentReceipt(UUID paymentId, SisUserDetails userDetails) {
         AssessmentPayment payment = assessmentPaymentRepository.findById(paymentId)
                 .orElseThrow(() -> new NotFoundException("Payment not found"));
+        return renderPaymentReceipt(payment, userDetails, "PAYMENT_RECEIPT");
+    }
+
+    @Transactional
+    public PdfReport financeCollections(LocalDate from, LocalDate to, UUID cashierId, SisUserDetails userDetails) {
+        List<Map<String, Object>> rows = financeOperations.collections(from, to, cashierId);
+        try (PdfReportBuilder pdf = builder(userDetails)) {
+            pdf.start("Finance Collection Report");
+            pdf.field("Business date range", from + " to " + to);
+            pdf.field("Cashier filter", cashierId == null ? "All cashiers" : cashierId);
+            pdf.section("Collections");
+            pdf.table(new String[]{"Date", "Cashier", "Tender", "Gross", "Voids", "Refunds", "Net"}, rows.stream().map(row -> new String[]{
+                    value(row.get("businessDate")), value(row.get("cashierName")), value(row.get("paymentMethod")),
+                    money((BigDecimal) row.get("grossPayments")), money((BigDecimal) row.get("voidedPayments")),
+                    money((BigDecimal) row.get("refunds")), money((BigDecimal) row.get("netCollections"))
+            }).toList());
+            log("FINANCE_COLLECTION_REPORT_EXPORTED", "FinanceCollections", null, userDetails);
+            return new PdfReport("finance-collections-" + from + "-" + to + ".pdf", pdf.finish());
+        }
+    }
+
+    @Transactional
+    public PdfReport studentPaymentReceipt(UUID paymentId, SisUserDetails userDetails) {
+        AssessmentPayment payment = assessmentPaymentRepository.findById(paymentId)
+                .orElseThrow(() -> new NotFoundException("Payment not found"));
+        if (userDetails == null || userDetails.studentId() == null
+                || !userDetails.studentId().equals(payment.getStudent().getId())) {
+            throw new BusinessRuleException("RECEIPT_ACCESS_DENIED", "Receipt does not belong to the authenticated student");
+        }
+        return renderPaymentReceipt(payment, userDetails, "STUDENT_PAYMENT_RECEIPT_ACCESSED");
+    }
+
+    private PdfReport renderPaymentReceipt(AssessmentPayment payment, SisUserDetails userDetails, String auditAction) {
         Assessment assessment = payment.getAssessment();
         try (PdfReportBuilder pdf = builder(userDetails)) {
             pdf.start("Official Payment Receipt");
+            if (payment.getStatus() == com.school.sis.fee.entity.PaymentStatus.VOIDED) pdf.watermark("VOIDED");
             studentHeader(pdf, payment.getStudent());
             pdf.section("Payment");
             pdf.field("Official Receipt No.", payment.getOfficialReceiptNumber());
@@ -254,12 +293,16 @@ public class ReportService {
             pdf.field("Semester", assessment.getSemester().getName());
             pdf.field("Payment Method", payment.getPaymentMethod());
             pdf.field("External Reference", payment.getExternalReference());
-            pdf.field("Amount", money(payment.getAmount()));
+            pdf.field("Gross Payment", money(payment.getAmount()));
             pdf.field("Cashier", payment.getCashier().getFullName());
             pdf.field("Payment Status", payment.getStatus());
-            pdf.field("Remaining Balance", money(assessment.getBalance()));
+            pdf.section("Assessment Totals at Printing");
+            pdf.field("Gross Posted Payments", money(assessment.getAmountPaid()));
+            pdf.field("Refunds", money(assessment.getRefundedAmount()));
+            pdf.field("Net Paid", money(assessment.getNetPaidAmount()));
+            pdf.field("Balance Immediately After Transaction", money(payment.getBalanceAfter() == null ? assessment.getBalance() : payment.getBalanceAfter()));
             if (payment.getVoidReason() != null) pdf.field("Void Reason", payment.getVoidReason());
-            log("PAYMENT_RECEIPT", "AssessmentPayment", paymentId, userDetails);
+            log(auditAction, "AssessmentPayment", payment.getId(), userDetails);
             return new PdfReport("receipt-" + payment.getOfficialReceiptNumber() + ".pdf", pdf.finish());
         }
     }

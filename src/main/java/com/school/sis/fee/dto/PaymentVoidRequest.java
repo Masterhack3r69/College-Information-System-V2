@@ -1,5 +1,8 @@
 package com.school.sis.fee.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
-public record PaymentVoidRequest(@NotBlank String reason) {}
+import java.util.UUID;
+
+public record PaymentVoidRequest(@NotNull UUID requestId, @NotBlank String reason) {}

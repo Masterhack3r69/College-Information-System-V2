@@ -6,8 +6,9 @@ let refreshPromise: Promise<string | null> | null = null
 
 export class ApiError extends Error {
   status: number
+  code?: string
   errors: { field: string; message: string }[]
-  constructor(message: string, status: number, errors: { field: string; message: string }[] = []) { super(message); this.status = status; this.errors = errors }
+  constructor(message: string, status: number, errors: { field: string; message: string }[] = [], code?: string) { super(message); this.status = status; this.errors = errors; this.code = code }
 }
 
 export function setAccessToken(token: string | null) { accessToken = token }
@@ -33,7 +34,7 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
   const response = await fetch(`${baseUrl}${path}`, { ...init, headers })
   if (response.status === 401 && retry && await refreshAccessToken()) return api<T>(path, init, false)
   const body = await response.json().catch(() => null) as ApiResponse<T> | null
-  if (!response.ok || !body?.success) throw new ApiError(body?.message ?? "Request failed", response.status, body?.errors)
+  if (!response.ok || !body?.success) throw new ApiError(body?.message ?? "Request failed", response.status, body?.errors, body?.code)
   return body.data
 }
 
