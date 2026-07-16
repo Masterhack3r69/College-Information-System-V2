@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { ApiError } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
+import { useAcademicTerm } from "@/lib/academic-term-context"
 import type {
   GradeClassSummary,
   GradeRemark,
@@ -127,24 +128,19 @@ export function GradesPage() {
   )
 }
 function ClassQueue({ scope }: { scope: string }) {
+  const academicTerm = useAcademicTerm()
   const years = useSchoolYears(0, 100).data?.items ?? [],
     terms = useSemesters(0, 100).data?.items ?? []
-  const [year, setYear] = useState("all"),
-    [term, setTerm] = useState("all"),
+  const [yearOverride, setYearOverride] = useState<string>(),
+    [termOverride, setTermOverride] = useState<string>(),
     [status, setStatus] = useState(
       scope === "REVIEW" ? "SUBMITTED" : scope === "LOCK" ? "APPROVED" : "all"
     ),
     [search, setSearch] = useState(""),
     [page, setPage] = useState(0),
     [opened, setOpened] = useState<GradeClassSummary>()
-  useEffect(() => {
-    const a = years.find((x) => x.active)
-    if (a && year === "all") setYear(a.id)
-  }, [years, year])
-  useEffect(() => {
-    const a = terms.find((x) => x.active)
-    if (a && term === "all") setTerm(a.id)
-  }, [terms, term])
+  const year = yearOverride ?? academicTerm.schoolYearId ?? "all"
+  const term = termOverride ?? academicTerm.semesterId ?? "all"
   const q = useGradeClasses({
     scope,
     schoolYearId: year === "all" ? undefined : year,
@@ -171,13 +167,13 @@ function ClassQueue({ scope }: { scope: string }) {
         </div>
         <Filter
           value={year}
-          onChange={setYear}
+          onChange={setYearOverride}
           all="All school years"
           values={years.map((x) => ({ v: x.id, l: x.schoolYear }))}
         />
         <Filter
           value={term}
-          onChange={setTerm}
+          onChange={setTermOverride}
           all="All semesters"
           values={terms.map((x) => ({ v: x.id, l: pretty(x.name) }))}
         />

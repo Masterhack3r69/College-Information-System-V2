@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
   Download,
@@ -10,7 +11,7 @@ import {
   Edit,
   FileUp,
 } from "lucide-react"
-import { openPdf, ApiError } from "@/lib/api"
+import { api, openPdf, ApiError } from "@/lib/api"
 import type {
   DocumentVerificationStatus,
   StudentRequest,
@@ -52,6 +53,8 @@ import {
 import { usePrograms, useSchoolYears } from "@/hooks/use-setup"
 import { useCurricula } from "@/hooks/use-curriculum"
 import { CascadingAddressSelector, type AddressValues } from "@/components/cascading-address-selector"
+import { useAcademicEvaluations } from "@/hooks/use-academic-exceptions"
+import type { AcademicPlan } from "@/hooks/use-student-portal"
 
 function DualAddressFields({
   current,
@@ -230,6 +233,7 @@ const educationalSchema = z.object({
     "RETURNEE",
     "SHIFTEE",
     "CROSS_ENROLLEE",
+    "SECOND_DEGREE",
     "CONTINUING_STUDENT",
   ] as const),
 })
@@ -501,7 +505,7 @@ export function StudentsPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => navigate(`/students/${s.id}`)}>
+                  <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/students/${s.id}`)}>
                     View profile
                   </Button>
                 </TableCell>
@@ -1006,6 +1010,7 @@ function CreateStudentDialog({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                           <SelectItem value="TRANSFEREE">TRANSFEREE</SelectItem>
                           <SelectItem value="RETURNEE">RETURNEE</SelectItem>
                           <SelectItem value="CROSS_ENROLLEE">CROSS_ENROLLEE</SelectItem>
+                          <SelectItem value="SECOND_DEGREE">SECOND_DEGREE</SelectItem>
                           <SelectItem value="GRADUATING">GRADUATING</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1401,10 +1406,11 @@ export function StudentDetailPage() {
       </div>
 
       <Tabs defaultValue="personal" className="mt-6">
-        <TabsList className="bg-slate-100 p-1 rounded-md">
+        <TabsList className="h-auto flex-wrap bg-slate-100 p-1 rounded-md">
           <TabsTrigger value="personal">Personal</TabsTrigger>
           <TabsTrigger value="academic">Academic</TabsTrigger>
           <TabsTrigger value="current-enrollment">Current Enrollment</TabsTrigger>
+          <TabsTrigger value="exceptions">Academic Exceptions</TabsTrigger>
           <TabsTrigger value="contact">Contact</TabsTrigger>
           <TabsTrigger value="family">Family</TabsTrigger>
           <TabsTrigger value="education">Education</TabsTrigger>
@@ -1437,6 +1443,10 @@ export function StudentDetailPage() {
         {/* CURRENT ENROLLMENT TAB */}
         <TabsContent value="current-enrollment" className="space-y-4 pt-4">
           <CurrentEnrollmentTab studentId={id} />
+        </TabsContent>
+
+        <TabsContent value="exceptions" className="space-y-4 pt-4">
+          <AcademicExceptionsTab studentId={id} />
         </TabsContent>
 
         {/* CONTACT DETAILS TAB */}
@@ -2263,6 +2273,7 @@ function EditSectionDialog({ section, student, isOpen, onClose, onSave }: EditSe
                         <SelectItem value="TRANSFEREE">TRANSFEREE</SelectItem>
                         <SelectItem value="RETURNEE">RETURNEE</SelectItem>
                         <SelectItem value="CROSS_ENROLLEE">CROSS_ENROLLEE</SelectItem>
+                        <SelectItem value="SECOND_DEGREE">SECOND_DEGREE</SelectItem>
                         <SelectItem value="GRADUATING">GRADUATING</SelectItem>
                       </SelectContent>
                     </Select>
@@ -2475,6 +2486,27 @@ function EditSectionDialog({ section, student, isOpen, onClose, onSave }: EditSe
     </Dialog>
   )
 }
+
+function AcademicExceptionsTab({ studentId }: { studentId: string }) {
+  const client = useQueryClient()
+  const plan = useQuery({ queryKey: ["student-academic-plan", studentId], queryFn: () => api<AcademicPlan>(`/students/${studentId}/academic-plan`) })
+  const evaluations = useAcademicEvaluations(undefined, studentId)
+  const audits = useQuery({ queryKey: ["student-graduation-audits", studentId], queryFn: () => api<{ id: string; result: string; requiredUnits: number; earnedUnits: number; missingRequiredCount: number; pendingEvaluationCount: number; unmetElectiveGroupCount: number; runAt: string }[]>(`/students/${studentId}/graduation-audits`) })
+  const approvals = useQuery({ queryKey: ["student-eligibility-approvals", studentId], queryFn: () => api<{ id: string; academicStatus: string; maximumUnitsSnapshot?: number; reason: string; approvedAt: string; approvedBy: string; schoolYear: string; semesterName: string }[]>(`/students/${studentId}/eligibility-approvals`) })
+  const runAudit = useMutation({ mutationFn: () => api(`/students/${studentId}/graduation-audits`, { method: "POST" }), onSuccess: async () => { toast.success("Graduation audit completed"); await client.invalidateQueries({ queryKey: ["student-graduation-audits", studentId] }) }, onError: (error) => toast.error(error instanceof Error ? error.message : "Unable to run audit") })
+  const openItems = plan.data?.items.filter((item) => ["MISSING", "FAILED", "PENDING_EVALUATION", "ENROLLED"].includes(item.status)) ?? []
+  return <div className="space-y-5"><div className="grid gap-4 sm:grid-cols-4"><Summary label="Completed" value={plan.data?.completedCourses ?? 0} /><Summary label="Credited" value={plan.data?.creditedCourses ?? 0} /><Summary label="Missing" value={plan.data?.missingCourses ?? 0} /><Summary label="Pending evaluation" value={plan.data?.pendingEvaluations ?? 0} /></div>
+    <div className="grid gap-5 lg:grid-cols-2"><section className="overflow-hidden rounded-lg border"><header className="flex items-center justify-between border-b p-4"><div><h3 className="font-semibold">Academic evaluations</h3><p className="text-xs text-muted-foreground">Transfer, shifting, second-degree, and migration cases</p></div><Button size="sm" variant="outline" asChild><Link to="/admin/academic-evaluations">Manage cases</Link></Button></header><div className="divide-y">{evaluations.data?.map((item) => <article key={item.id} className="flex items-start justify-between gap-3 p-4"><div><p className="font-medium">{item.evaluationType.replaceAll("_", " ")}</p><p className="text-sm text-muted-foreground">Target {item.targetCurriculumCode}</p></div><Badge variant={item.status === "APPROVED" ? "default" : item.status === "REJECTED" ? "destructive" : "outline"}>{item.status.replaceAll("_", " ")}</Badge></article>)}{!evaluations.isLoading && !evaluations.data?.length ? <p className="p-6 text-center text-sm text-muted-foreground">No academic evaluation cases.</p> : null}</div></section>
+      <section className="overflow-hidden rounded-lg border"><header className="border-b p-4"><h3 className="font-semibold">Posted credits</h3><p className="text-xs text-muted-foreground">Active credits satisfy curriculum and prerequisite rules.</p></header><div className="divide-y">{plan.data?.credits.map((credit) => <article key={credit.id} className="p-4"><div className="flex justify-between gap-3"><div><p className="font-medium">{credit.courseCode} · {credit.courseTitle}</p><p className="mt-1 text-sm text-muted-foreground">{credit.sourceLabel}</p></div><Badge>{credit.creditedUnits} units</Badge></div></article>)}{!plan.isLoading && !plan.data?.credits.length ? <p className="p-6 text-center text-sm text-muted-foreground">No active course credits.</p> : null}</div></section>
+    </div>
+    <section className="overflow-hidden rounded-lg border"><header className="border-b p-4"><h3 className="font-semibold">Open academic-plan items</h3></header><Table><TableHeader><TableRow><TableHead>Course</TableHead><TableHead>Curriculum term</TableHead><TableHead>Requirement</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{openItems.map((item) => <TableRow key={item.curriculumCourseId}><TableCell><p className="font-medium">{item.courseCode}</p><p className="text-xs text-muted-foreground">{item.courseTitle}</p></TableCell><TableCell>Year {item.yearLevel} · {item.semester.replaceAll("_", " ")}</TableCell><TableCell>{item.requirement}</TableCell><TableCell><Badge variant={item.status === "FAILED" || item.status === "MISSING" ? "destructive" : "outline"}>{item.status.replaceAll("_", " ")}</Badge></TableCell></TableRow>)}</TableBody></Table>{!plan.isLoading && !openItems.length ? <p className="p-6 text-center text-sm text-muted-foreground">No open required courses.</p> : null}</section>
+    <div className="grid gap-5 lg:grid-cols-2"><section className="overflow-hidden rounded-lg border"><header className="flex items-center justify-between border-b p-4"><div><h3 className="font-semibold">Graduation audits</h3><p className="text-xs text-muted-foreground">Academic requirements only; institutional clearance is separate.</p></div><Button size="sm" onClick={() => runAudit.mutate()} disabled={runAudit.isPending}>{runAudit.isPending ? <Loader2 className="animate-spin" /> : null}Run audit</Button></header><div className="divide-y">{audits.data?.map((audit) => <article key={audit.id} className="flex items-start justify-between gap-3 p-4"><div><p className="font-medium">{new Date(audit.runAt).toLocaleString()}</p><p className="text-sm text-muted-foreground">{audit.earnedUnits}/{audit.requiredUnits} units · {audit.missingRequiredCount} missing · {audit.unmetElectiveGroupCount} elective groups</p></div><Badge variant={audit.result === "ELIGIBLE" ? "default" : audit.result === "CONFIGURATION_INCOMPLETE" ? "secondary" : "destructive"}>{audit.result.replaceAll("_", " ")}</Badge></article>)}{!audits.isLoading && !audits.data?.length ? <p className="p-6 text-center text-sm text-muted-foreground">No persisted audits.</p> : null}</div></section>
+      <section className="overflow-hidden rounded-lg border"><header className="border-b p-4"><h3 className="font-semibold">Eligibility approvals</h3><p className="text-xs text-muted-foreground">Registrar approvals retain the applied policy snapshot.</p></header><div className="divide-y">{approvals.data?.map((approval) => <article key={approval.id} className="p-4"><p className="font-medium">{approval.academicStatus.replaceAll("_", " ")} · {approval.schoolYear} {approval.semesterName.replaceAll("_", " ")}</p><p className="mt-1 text-sm text-muted-foreground">{approval.reason}{approval.maximumUnitsSnapshot ? ` · Limit ${approval.maximumUnitsSnapshot} units` : ""}</p><p className="mt-1 text-xs text-muted-foreground">Approved by {approval.approvedBy} · {new Date(approval.approvedAt).toLocaleString()}</p></article>)}{!approvals.isLoading && !approvals.data?.length ? <p className="p-6 text-center text-sm text-muted-foreground">No eligibility approvals.</p> : null}</div></section>
+    </div>
+  </div>
+}
+
+function Summary({ label, value }: { label: string; value: number }) { return <div className="rounded-lg border p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold text-[#0f7d82]">{value}</p></div> }
 
 function CurrentEnrollmentTab({ studentId }: { studentId: string }) {
   const { data: enrollment, isLoading } = useStudentLatestEnrollment(studentId)

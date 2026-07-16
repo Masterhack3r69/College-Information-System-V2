@@ -18,6 +18,16 @@ public interface EnrollmentSubjectRepository extends JpaRepository<EnrollmentSub
                                                             com.school.sis.enrollment.entity.EnrollmentStatus enrollmentStatus);
 
     @Query("""
+            select count(subject) from EnrollmentSubject subject
+            where subject.classSchedule.id = :scheduleId
+              and subject.status = com.school.sis.enrollment.entity.EnrollmentSubjectStatus.ENROLLED
+              and subject.enrollment.status = com.school.sis.enrollment.entity.EnrollmentStatus.CONFIRMED
+              and subject.enrollment.id <> :enrollmentId
+            """)
+    long countConfirmedOtherEnrollmentSubjects(@Param("scheduleId") UUID scheduleId,
+                                                @Param("enrollmentId") UUID enrollmentId);
+
+    @Query("""
             select subject from EnrollmentSubject subject
             join fetch subject.enrollment enrollment
             join fetch enrollment.student
@@ -46,4 +56,3 @@ public interface EnrollmentSubjectRepository extends JpaRepository<EnrollmentSub
             """)
     boolean isFacultyAssignedToStudent(@Param("facultyId") UUID facultyId, @Param("studentId") UUID studentId);
 }
-

@@ -38,7 +38,33 @@ export type StudentEnrollment = {
   schoolYear: string
   semesterName: string
   submittedAt?: string
+  programCode?: string
+  totalCreditUnits?: number
+  subjectCount?: number
+  subjects?: StudentEnrollmentSubject[]
+  validation?: EnrollmentValidation
 }
+export type StudentEnrollmentSubject = {
+  id: string
+  scheduleId: string
+  courseId: string
+  courseCode: string
+  courseTitle: string
+  creditUnits: number
+  sectionCode: string
+  facultyName?: string
+  roomCode?: string
+  status: string
+  meetings: ClassMeeting[]
+}
+export type EnrollmentValidation = {
+  valid: boolean
+  blockingIssues: { code: string; message: string }[]
+  warnings: { code: string; message: string }[]
+  totalCreditUnits: number
+  subjectCount: number
+}
+export type ClassMeeting = { dayOfWeek: string; startTime: string; endTime: string }
 export type StudentSchedule = {
   scheduleId: string
   courseCode: string
@@ -143,7 +169,42 @@ export type AvailableClass = {
   sectionCode: string
   roomCode: string
   faculty: string
+  curriculumCourseId: string
+  curriculumYearLevel: number
+  requiredStatus: "REQUIRED" | "OPTIONAL" | "ELECTIVE"
+  backSubject: boolean
+  recommendationType: "BACK_SUBJECT" | "NORMAL_TERM" | "ELECTIVE" | "OPTIONAL"
+  availableSeats: number
+  selected: boolean
+  meetings: ClassMeeting[]
 }
+export type AcademicPlanItem = {
+  curriculumCourseId: string
+  courseId: string
+  courseCode: string
+  courseTitle: string
+  creditUnits: number
+  yearLevel: number
+  semester: string
+  requirement: "REQUIRED" | "OPTIONAL" | "ELECTIVE"
+  status: "COMPLETED" | "CREDITED" | "ENROLLED" | "FAILED" | "MISSING" | "PENDING_EVALUATION" | "OPTIONAL"
+  detail?: string
+}
+export type AcademicPlan = {
+  studentId: string
+  curriculumId: string
+  curriculumCode: string
+  completedCourses: number
+  creditedCourses: number
+  missingCourses: number
+  pendingEvaluations: number
+  earnedUnits: number
+  items: AcademicPlanItem[]
+  credits: CourseCredit[]
+}
+export type CourseCredit = { id: string; courseId: string; courseCode: string; courseTitle: string; creditedUnits: number; sourceLabel: string; postedAt: string; active?: boolean }
+export type AcademicEvaluationSummary = { id: string; evaluationType: string; status: string; sourceInstitution?: string; targetCurriculumCode: string; sourceCourseCount: number; recommendedMatchCount: number; submittedAt?: string; decidedAt?: string }
+export type GraduationAuditSummary = { id: string; result: string; totalRequiredUnits: number; earnedUnits: number; missingRequiredCount: number; unmetElectiveGroupCount: number; pendingEvaluationCount: number; auditedAt: string }
 export type StudentDashboard = {
   profile: StudentProfile
   term: StudentTerm
@@ -190,6 +251,14 @@ export const useStudentProgress = () =>
     queryKey: ["student-progress"],
     queryFn: () => api<StudentProgress>("/student/me/curriculum-progress"),
   })
+export const useStudentAcademicPlan = () =>
+  useQuery({ queryKey: ["student-academic-plan"], queryFn: () => api<AcademicPlan>("/student/me/academic-plan") })
+export const useStudentCourseCredits = () =>
+  useQuery({ queryKey: ["student-course-credits"], queryFn: () => api<CourseCredit[]>("/student/me/course-credits") })
+export const useStudentAcademicEvaluations = () =>
+  useQuery({ queryKey: ["student-academic-evaluations"], queryFn: () => api<AcademicEvaluationSummary[]>("/student/me/academic-evaluations") })
+export const useStudentGraduationAudits = () =>
+  useQuery({ queryKey: ["student-graduation-audits"], queryFn: () => api<GraduationAuditSummary[]>("/student/me/graduation-audits") })
 export const useStudentAttendance = () =>
   useQuery({
     queryKey: ["student-attendance"],

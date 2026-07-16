@@ -22,6 +22,7 @@ Legacy top-level admin paths redirect under `/admin`. Student forced-password-ch
 
 - TanStack Query handles remote queries, mutations, invalidation, and caching.
 - Auth context handles user state, portal selection, token refresh, and permission checks.
+- Academic-term context loads school years and semesters in parallel, selects the active defaults, and stores each user's working term in session storage.
 - React Hook Form and Zod are used in complex forms; some compact portal screens use local state and server validation.
 - Sonner toasts and API error envelopes surface feedback.
 
@@ -32,6 +33,8 @@ Legacy top-level admin paths redirect under `/admin`. Student forced-password-ch
 ## Role-Based Navigation
 
 Administrative links are filtered by permission; route guards also block direct navigation. Faculty and student shells provide portal-specific menus and optional portal switching.
+
+The administrative header term selector is shared with enrollment and schedules. Finance and grade queues inherit it until a page-specific filter is selected.
 
 ## Current Limitations
 
@@ -44,4 +47,3 @@ Administrative links are filtered by permission; route guards also block direct 
 - [[System Architecture]]
 - [[Authentication and Roles]]
 - [[Development Setup]]
-

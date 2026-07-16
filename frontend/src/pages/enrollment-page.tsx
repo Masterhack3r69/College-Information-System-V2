@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertCircle,
@@ -16,6 +16,8 @@ import {
   Eye,
   Play,
   Ban,
+  Undo2,
+  KeyRound,
 } from "lucide-react"
 import { toast } from "sonner"
 import { api, ApiError, openPdf } from "@/lib/api"
@@ -25,13 +27,15 @@ import type {
   EnrollmentValidation,
   PageResponse,
   Schedule,
-  SchoolYear,
-  Semester,
   Student,
   StudentSummary,
   Section,
 } from "@/lib/types"
 import { useAuth } from "@/lib/auth"
+import { useAcademicTerm } from "@/lib/academic-term-context"
+
+type EnrollmentHistoryEntry = { id: string; fromStatus?: string; toStatus: string; remarks?: string; changedAt: string }
+type CancellationReadiness = { ready: boolean; financeResolved: boolean; hasAttendance: boolean; hasGrades: boolean; hasLockedAcademicRecords: boolean; blockers: { code: string; message: string }[] }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -48,6 +52,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -125,6 +130,7 @@ function hasFrontendMeetingConflict(s1: Schedule, s2: Schedule): boolean {
 export function EnrollmentPage() {
   const qc = useQueryClient()
   const { can } = useAuth()
+  const academicTerm = useAcademicTerm()
 
   // Tab state
   const [activeTab, setActiveTab] = useState("builder")
@@ -132,9 +138,9 @@ export function EnrollmentPage() {
   // Builder States
   const [search, setSearch] = useState("")
   const [selectedId, setSelectedId] = useState<string>()
-  const [yearId, setYearId] = useState("")
-  const [semesterId, setSemesterId] = useState("")
-  const [yearLevel, setYearLevel] = useState(1)
+  const yearId = academicTerm.schoolYearId
+  const semesterId = academicTerm.semesterId
+  const [yearLevelOverride, setYearLevelOverride] = useState<number>()
   const [sectionChoice, setSectionChoice] = useState("")
 
   // Records Tab States
@@ -149,6 +155,8 @@ export function EnrollmentPage() {
   const [inspectingId, setInspectingId] = useState<string | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [cancelReason, setCancelReason] = useState("")
+  const [returnReason, setReturnReason] = useState("")
+  const [approvalReason, setApprovalReason] = useState("")
   const [provisionedCredentials, setProvisionedCredentials] = useState<{
     username: string
     initialPassword: string
@@ -167,35 +175,12 @@ export function EnrollmentPage() {
     queryFn: () => api<Student>(`/students/${selectedId}`),
     enabled: !!selectedId,
   })
-  const years = useQuery({
-    queryKey: ["school-years"],
-    queryFn: () => api<PageResponse<SchoolYear>>("/school-years?size=50"),
-  })
-  const semesters = useQuery({
-    queryKey: ["semesters"],
-    queryFn: () => api<PageResponse<Semester>>("/semesters?size=20"),
-  })
   const sections = useQuery({
     queryKey: ["sections", "enrollment"],
     queryFn: () => api<PageResponse<Section>>("/sections?size=500"),
   })
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    if (!yearId) setYearId(years.data?.items.find((x) => x.active)?.id ?? "")
-  }, [years.data, yearId])
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    if (!semesterId)
-      setSemesterId(semesters.data?.items.find((x) => x.active)?.id ?? "")
-  }, [semesters.data, semesterId])
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    if (student.data) {
-      setYearLevel(student.data.academic.yearLevel)
-      setSectionChoice("")
-    }
-  }, [student.data])
+  const yearLevel = yearLevelOverride ?? student.data?.academic.yearLevel ?? 1
 
   const existing = useQuery({
     queryKey: ["enrollment", selectedId, yearId, semesterId],
@@ -386,6 +371,18 @@ export function EnrollmentPage() {
     retry: false,
   })
 
+  const enrollmentHistory = useQuery({
+    queryKey: ["enrollment-history", inspectingId],
+    queryFn: () => api<EnrollmentHistoryEntry[]>(`/enrollments/${inspectingId}/history`),
+    enabled: !!inspectingId,
+  })
+
+  const cancellationReadiness = useQuery({
+    queryKey: ["enrollment-cancellation-readiness", cancellingId],
+    queryFn: () => api<CancellationReadiness>(`/enrollments/${cancellingId}/cancellation-readiness`),
+    enabled: !!cancellingId,
+  })
+
   // Cancel Mutation
   const cancel = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
@@ -396,8 +393,23 @@ export function EnrollmentPage() {
     onSuccess: () => {
       toast.success("Enrollment cancelled")
       void qc.invalidateQueries({ queryKey: ["enrollments"] })
+      void qc.invalidateQueries({ queryKey: ["enrollment-detail"] })
+      void qc.invalidateQueries({ queryKey: ["enrollment-history"] })
+      void qc.invalidateQueries({ queryKey: ["enrollment-cancellation-readiness"] })
       void refreshEnrollment()
     },
+    onError: notify,
+  })
+
+  const returnToDraft = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => api<Enrollment>(`/enrollments/${id}/return-to-draft`, { method: "POST", body: JSON.stringify({ reason }) }),
+    onSuccess: async () => { toast.success("Enrollment returned to draft"); setReturnReason(""); await Promise.all([qc.invalidateQueries({ queryKey: ["enrollments"] }), qc.invalidateQueries({ queryKey: ["enrollment-detail"] }), qc.invalidateQueries({ queryKey: ["enrollment-history"] })]) },
+    onError: notify,
+  })
+
+  const approveEligibility = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => api(`/enrollments/${id}/eligibility-approval`, { method: "POST", body: JSON.stringify({ reason }) }),
+    onSuccess: async () => { toast.success("Enrollment eligibility approved"); setApprovalReason(""); await qc.invalidateQueries({ queryKey: ["enrollment-detail"] }) },
     onError: notify,
   })
 
@@ -490,28 +502,32 @@ export function EnrollmentPage() {
                 placeholder="Search student number or name"
               />
             </div>
-            <Select value={yearId} onValueChange={setYearId}>
+            <Select value={yearId} onValueChange={(value) => academicTerm.setTerm(value, semesterId)}>
               <SelectTrigger>
                 <SelectValue placeholder="School year" />
               </SelectTrigger>
               <SelectContent>
-                {years.data?.items.map((x) => (
-                  <SelectItem key={x.id} value={x.id}>
-                    {x.schoolYear}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {academicTerm.schoolYears.map((x) => (
+                    <SelectItem key={x.id} value={x.id}>
+                      {x.schoolYear}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
-            <Select value={semesterId} onValueChange={setSemesterId}>
+            <Select value={semesterId} onValueChange={(value) => academicTerm.setTerm(yearId, value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Semester" />
               </SelectTrigger>
               <SelectContent>
-                {semesters.data?.items.map((x) => (
-                  <SelectItem key={x.id} value={x.id}>
-                    {x.name}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {academicTerm.semesters.map((x) => (
+                    <SelectItem key={x.id} value={x.id}>
+                      {x.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -529,7 +545,11 @@ export function EnrollmentPage() {
                 students.data.items.map((s) => (
                   <button
                     key={s.id}
-                    onClick={() => setSelectedId(s.id)}
+                    onClick={() => {
+                      setSelectedId(s.id)
+                      setYearLevelOverride(undefined)
+                      setSectionChoice("")
+                    }}
                     className="flex w-full items-center justify-between border-b px-4 py-3 text-left last:border-0 hover:bg-slate-50"
                   >
                     <span>
@@ -554,7 +574,11 @@ export function EnrollmentPage() {
               <div className="min-w-0 space-y-4">
                 <StudentContext
                   student={student.data}
-                  onClear={() => setSelectedId(undefined)}
+                  onClear={() => {
+                    setSelectedId(undefined)
+                    setYearLevelOverride(undefined)
+                    setSectionChoice("")
+                  }}
                 />
 
                 {!enrollment && (
@@ -566,7 +590,7 @@ export function EnrollmentPage() {
                       <Select
                         value={String(yearLevel)}
                         onValueChange={(value) => {
-                          setYearLevel(Number(value))
+                          setYearLevelOverride(Number(value))
                           setSectionChoice("")
                         }}
                       >
@@ -734,12 +758,14 @@ export function EnrollmentPage() {
                 <SelectValue placeholder="School Year" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All School Years</SelectItem>
-                {years.data?.items.map((x) => (
-                  <SelectItem key={x.id} value={x.id}>
-                    {x.schoolYear}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectItem value="ALL">All School Years</SelectItem>
+                  {academicTerm.schoolYears.map((x) => (
+                    <SelectItem key={x.id} value={x.id}>
+                      {x.schoolYear}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
 
@@ -754,12 +780,14 @@ export function EnrollmentPage() {
                 <SelectValue placeholder="Semester" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Semesters</SelectItem>
-                {semesters.data?.items.map((x) => (
-                  <SelectItem key={x.id} value={x.id}>
-                    {x.name}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectItem value="ALL">All Semesters</SelectItem>
+                  {academicTerm.semesters.map((x) => (
+                    <SelectItem key={x.id} value={x.id}>
+                      {x.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
 
@@ -859,9 +887,8 @@ export function EnrollmentPage() {
                                 size="sm"
                                 onClick={() => {
                                   setSelectedId(item.studentId)
-                                  setYearId(item.schoolYearId)
-                                  setSemesterId(item.semesterId)
-                                  setYearLevel(item.yearLevel)
+                                  academicTerm.setTerm(item.schoolYearId, item.semesterId)
+                                  setYearLevelOverride(item.yearLevel)
                                   setSectionChoice(
                                     item.sectionId ?? "__mixed__"
                                   )
@@ -960,6 +987,7 @@ export function EnrollmentPage() {
               Detailed view of student enrollment record and class schedules.
             </DialogDescription>
           </DialogHeader>
+          {cancellationReadiness.isLoading ? <div className="flex items-center gap-2 rounded-md border p-3 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Checking Finance and academic activity…</div> : cancellationReadiness.data && !cancellationReadiness.data.ready ? <Alert variant="destructive"><Ban /><AlertTitle>Cancellation is blocked</AlertTitle><AlertDescription><ul className="mt-2 list-disc space-y-1 pl-5">{cancellationReadiness.data.blockers.map((blocker) => <li key={blocker.code}>{blocker.message}</li>)}</ul></AlertDescription></Alert> : cancellationReadiness.data?.ready ? <Alert><CheckCircle2 /><AlertTitle>Ready to cancel</AlertTitle><AlertDescription>No attendance, grade, locked academic, or unresolved Finance activity was found.</AlertDescription></Alert> : null}
 
           {inspectingEnrollment.isLoading ? (
             <div className="flex items-center justify-center p-8">
@@ -1121,59 +1149,20 @@ export function EnrollmentPage() {
                 </div>
               </section>
 
-              {/* Status History list */}
               <section className="rounded-lg border bg-slate-50/50 p-4">
-                <h3 className="mb-3 text-sm font-semibold text-[#0b1f3a]">
-                  Status History
-                </h3>
-                <div className="space-y-4">
-                  {/* DRAFT */}
-                  <div className="relative pb-2 pl-6 before:absolute before:top-2 before:bottom-0 before:left-2 before:w-0.5 before:bg-slate-200 last:before:hidden">
-                    <div className="absolute top-1 left-0 flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white">
-                      <div className="h-1.5 w-1.5 rounded-full bg-slate-400"></div>
-                    </div>
-                    <div className="text-xs font-semibold text-slate-700">
-                      DRAFT
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Enrollment draft created
-                    </div>
+                <h3 className="mb-3 text-sm font-semibold text-[#0b1f3a]">Status History</h3>
+                <div className="space-y-4">{enrollmentHistory.data?.map((entry) => (
+                  <div key={entry.id} className="relative pb-2 pl-6 before:absolute before:top-2 before:bottom-0 before:left-2 before:w-0.5 before:bg-slate-200 last:before:hidden">
+                    <div className="absolute top-1 left-0 flex h-4 w-4 items-center justify-center rounded-full border border-[#0f7d82] bg-white"><div className="h-1.5 w-1.5 rounded-full bg-[#0f7d82]" /></div>
+                    <div className="flex flex-wrap items-center justify-between gap-2"><div className="text-xs font-semibold text-slate-700">{entry.toStatus.replaceAll("_", " ")}</div><time className="text-[10px] text-muted-foreground">{new Date(entry.changedAt).toLocaleString()}</time></div>
+                    <div className="text-xs text-muted-foreground">{entry.remarks || "No remarks recorded"}</div>
                   </div>
-
-                  {/* CONFIRMED */}
-                  {(inspectingEnrollment.data.status === "CONFIRMED" ||
-                    inspectingEnrollment.data.status === "CANCELLED") && (
-                    <div className="relative pb-2 pl-6 before:absolute before:top-2 before:bottom-0 before:left-2 before:w-0.5 before:bg-slate-200 last:before:hidden">
-                      <div className="absolute top-1 left-0 flex h-4 w-4 items-center justify-center rounded-full border border-emerald-500 bg-white">
-                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-                      </div>
-                      <div className="text-xs font-semibold text-emerald-700">
-                        CONFIRMED
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Enrollment officially confirmed and locked
-                      </div>
-                    </div>
-                  )}
-
-                  {/* CANCELLED */}
-                  {inspectingEnrollment.data.status === "CANCELLED" && (
-                    <div className="relative pb-2 pl-6">
-                      <div className="absolute top-1 left-0 flex h-4 w-4 items-center justify-center rounded-full border border-red-500 bg-white">
-                        <div className="h-1.5 w-1.5 rounded-full bg-red-500"></div>
-                      </div>
-                      <div className="text-xs font-semibold text-red-700">
-                        CANCELLED
-                      </div>
-                      <div className="mt-1 max-w-md rounded border border-red-100 bg-red-50/50 p-2 text-xs text-red-600">
-                        Reason:{" "}
-                        {inspectingEnrollment.data.remarks ||
-                          "No reason provided."}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                ))}{!enrollmentHistory.isLoading && !enrollmentHistory.data?.length ? <p className="text-xs text-muted-foreground">No history entries are available.</p> : null}</div>
               </section>
+
+              {inspectingEnrollment.data.status === "SUBMITTED" ? <section className="rounded-lg border p-4"><h3 className="text-sm font-semibold">Return for correction</h3><p className="mt-1 text-xs text-muted-foreground">Return the submitted load to the student with a reason.</p><div className="mt-3 flex gap-2"><Input value={returnReason} onChange={(event) => setReturnReason(event.target.value)} placeholder="Reason for returning to draft" /><Button variant="outline" disabled={!returnReason.trim() || returnToDraft.isPending} onClick={() => returnToDraft.mutate({ id: inspectingEnrollment.data.id, reason: returnReason })}><Undo2 />Return to draft</Button></div></section> : null}
+
+              {[...(inspectingEnrollment.data.validation?.blockingIssues ?? []), ...(inspectingEnrollment.data.validation?.warnings ?? [])].some((issue) => issue.code === "ACADEMIC_POLICY_APPROVAL_REQUIRED") ? <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-4"><h3 className="flex items-center gap-2 text-sm font-semibold"><KeyRound className="size-4" />Academic-policy approval</h3><p className="mt-1 text-xs text-muted-foreground">Record Registrar authorization before confirmation.</p><div className="mt-3 flex gap-2"><Input value={approvalReason} onChange={(event) => setApprovalReason(event.target.value)} placeholder="Approval reason and conditions" /><Button disabled={!approvalReason.trim() || approveEligibility.isPending} onClick={() => approveEligibility.mutate({ id: inspectingEnrollment.data.id, reason: approvalReason })}>Approve eligibility</Button></div></section> : null}
 
               {/* Download buttons (only if status is CONFIRMED) */}
               {inspectingEnrollment.data.status === "CONFIRMED" && (
@@ -1285,7 +1274,7 @@ export function EnrollmentPage() {
             </Button>
             <Button
               variant="destructive"
-              disabled={!cancelReason.trim() || cancel.isPending}
+              disabled={!cancelReason.trim() || cancel.isPending || !cancellationReadiness.data?.ready}
               onClick={() => {
                 if (cancellingId && cancelReason.trim()) {
                   cancel.mutate(

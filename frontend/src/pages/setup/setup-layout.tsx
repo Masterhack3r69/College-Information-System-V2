@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth"
 
 const tabs = [
   { to: "departments", label: "Departments" },
@@ -12,9 +13,11 @@ const tabs = [
   { to: "sections", label: "Sections" },
   { to: "curricula", label: "Curricula" },
   { to: "grading", label: "Grading" },
+  { to: "policies", label: "Eligibility & Electives", permission: "ACADEMIC_POLICY_MANAGE" },
 ]
 
 export function SetupLayout() {
+  const { can } = useAuth()
   return (
     <div className="mx-auto max-w-7xl p-4 md:p-7">
       <div className="mb-6">
@@ -26,7 +29,7 @@ export function SetupLayout() {
 
       <div className="border-b border-border mb-6 overflow-x-auto flex">
         <nav className="flex space-x-6 min-w-max pb-px">
-          {tabs.map((tab) => (
+          {tabs.filter((tab) => !tab.permission || can(tab.permission)).map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}

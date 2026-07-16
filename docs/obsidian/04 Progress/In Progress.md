@@ -4,23 +4,47 @@
 
 ### Current State
 
-Backend service/security tests pass and the frontend builds. The development Finance dataset is reset and seeded through V17. Existing Playwright suites concentrate on academic setup and leave portal lifecycles less covered.
+The backend suite discovers 89 tests (88 passed, 1 Docker-dependent test skipped), and the frontend production build succeeds. The development schema is at V20. Focused academic-exception and administrative term-selector desktop/mobile browser checks pass; full cross-account lifecycle automation remains incomplete.
 
 ### Completed
 
 - Backend tests for auth administration, audit, curriculum, scheduling, enrollment, fees, grades, reports, and portal ownership helpers.
 - Academic-setup Playwright specifications and helper structure exist.
+- Live PostgreSQL API smoke flows for evaluation → grouped match → Registrar approval → posted credit, policy create/list, graduation audit, and cancellation readiness.
 
 ### Remaining
 
 - Run a fresh full Playwright suite against the current seeded stack.
-- Add end-to-end coverage for registrar, cashier, faculty, and student lifecycle boundaries.
+- Add end-to-end coverage for Registrar, Dean, Program Head, cashier, faculty, and student lifecycle boundaries.
+- Add an automated concurrent final-seat confirmation test.
 - Add multi-thread PostgreSQL Finance tests and a full cross-role browser suite.
 - Resolve the current ESLint errors and warnings.
 
 ### Blockers
 
-- Testcontainers Docker auto-detection still skips locally, although isolated PostgreSQL 16 Flyway V1–V17 validation succeeds.
+- Testcontainers Docker auto-detection still skips locally, although the running PostgreSQL 16 Docker Compose database applied and validated Flyway V1–V20.
+
+## Enrollment and Academic Exceptions Upgrade
+
+### Completed
+
+- Enrollment hardening: permission cleanup, duplicate-course/corequisite/credit-aware prerequisite checks, mixed-year loads, seat locks, history, return-to-draft, cancellation readiness, and policy enforcement.
+- Unified academic evaluation and immutable credit/reversal workflow for transfer, shifting, second-degree, and migration cases.
+- Academic plan, explicit migration impact, eligibility policy snapshots, elective groups, and persisted academic graduation audit.
+- Registrar, academic reviewer, student-detail, student enrollment/academics, and setup frontend surfaces.
+- V18–V20 clean migration on the development PostgreSQL database, full backend suite, frontend build, live API smoke, and focused responsive browser checks.
+
+### Remaining
+
+- Institutional configuration/approval of probation, leave, equivalency, migration, and elective policies.
+- Automated cross-account browser suite and final-seat race test.
+- Separate future modules for admissions, special/non-degree study, international compliance, bridging plans, readmission administration, and institutional graduation clearance.
+
+### Related
+
+- [[Academic Exceptions]]
+- [[Enrollment]]
+- [[ADR-003 Unified Academic Evaluation and Credit Posting]]
 
 ## Finance Modernization Verification
 

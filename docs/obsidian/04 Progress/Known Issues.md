@@ -24,13 +24,37 @@
 - Expected behavior: Stable cross-role browser tests cover the modernized workflow.
 - Status: Open verification work.
 
-## Registrar Finance Resolution Display Needs Visual Verification
+## Enrollment Final-Seat Race Is Not Yet an Automated CI Test
 
-- Severity: Low
-- Module: Enrollment / Finance
-- Current behavior: The backend returns stable `FINANCE_RESOLUTION_REQUIRED` and the UI shows the blocking API message. A dedicated inline resolution-status panel is not yet present.
-- Expected behavior: Registrar can see resolution state before attempting cancellation.
-- Status: UI enhancement.
+- Severity: Medium
+- Module: Enrollment / Testing
+- Current behavior: Confirmation pessimistically locks schedule rows and recounts confirmed seats. Service tests cover capacity rules and the live PostgreSQL schema is validated, but a repeatable multi-session final-seat race is not in CI.
+- Expected behavior: Two concurrent confirmations for one remaining seat produce exactly one confirmation.
+- Status: Automation gap; see [[Enrollment]].
+
+## Academic Exception Cross-Role Browser Suite Is Incomplete
+
+- Severity: Medium
+- Module: Academic Exceptions / Testing
+- Current behavior: API smoke testing verified the full evaluation-to-credit workflow and focused desktop/mobile UI checks passed. Separate Dean, Program Head, Registrar, and Student browser sessions are not automated.
+- Expected behavior: CI proves department scoping, final approval separation, student-only visibility, returns/rejections, grouped-source reuse prevention, migration impact, and reversal authorization.
+- Status: Automation gap; see [[Academic Exceptions]].
+
+## Institutional Academic Policies Need Configuration
+
+- Severity: High before production
+- Module: Academic Setup / Enrollment
+- Current behavior: Policy and elective-group engines are implemented but no institutional probation, leave, equivalency threshold, migration, or elective rules are seeded.
+- Expected behavior: Academic leadership approves and configures production rules per school year/program.
+- Status: Open operational decision.
+
+## Deferred Student-Type Modules
+
+- Severity: Product scope
+- Module: Admissions / Student Records
+- Current behavior: Admissions intake, special/non-degree enrollment, international compliance, bridging-plan administration, readmission administration, and institutional graduation clearance remain outside the academic-exception implementation.
+- Expected behavior: Define each as a separate module without overloading student classification/status enums.
+- Status: Future scope.
 
 ## Frontend Lint Fails
 
@@ -44,8 +68,8 @@
 
 - Severity: Medium
 - Module: Academic Setup / Testing
-- Current behavior: Stored failure artifacts require a fresh configured Playwright run.
-- Status: Verification needed.
+- Current behavior: Stored full-suite failure artifacts remain. Focused eligibility/elective desktop and 375 px checks passed on 2026-07-16 without console errors or overflow.
+- Status: Full-suite verification still needed.
 
 ## Faculty Top-Level Routes Redirect
 

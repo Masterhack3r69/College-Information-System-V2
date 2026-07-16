@@ -1,5 +1,9 @@
 package com.school.sis.enrollment;
 
+import com.school.sis.academic.entity.StudentCourseCredit;
+import com.school.sis.academic.repository.StudentCourseCreditRepository;
+import com.school.sis.auth.entity.User;
+import com.school.sis.auth.repository.UserRepository;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.curriculum.entity.Curriculum;
 import com.school.sis.curriculum.entity.CurriculumCourse;
@@ -19,6 +23,7 @@ import com.school.sis.schedule.dto.ScheduleMeetingRequest;
 import com.school.sis.schedule.dto.ScheduleRequest;
 import com.school.sis.schedule.dto.ScheduleResponse;
 import com.school.sis.schedule.entity.ScheduleStatus;
+import com.school.sis.schedule.repository.ClassScheduleRepository;
 import com.school.sis.schedule.service.ScheduleService;
 import com.school.sis.setup.entity.ActiveStatus;
 import com.school.sis.setup.entity.Course;
@@ -53,12 +58,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -83,6 +91,10 @@ class EnrollmentServiceTests {
     private final CurriculumRepository curriculumRepository;
     private final CurriculumCourseRepository curriculumCourseRepository;
     private final StudentRepository studentRepository;
+    private final StudentCourseCreditRepository studentCourseCreditRepository;
+    private final UserRepository userRepository;
+    private final JdbcTemplate jdbc;
+    private final ClassScheduleRepository classScheduleRepository;
 
     private Program program;
     private Course courseOne;
@@ -118,7 +130,11 @@ class EnrollmentServiceTests {
             SectionRepository sectionRepository,
             CurriculumRepository curriculumRepository,
             CurriculumCourseRepository curriculumCourseRepository,
-            StudentRepository studentRepository
+            StudentRepository studentRepository,
+            StudentCourseCreditRepository studentCourseCreditRepository,
+            UserRepository userRepository,
+            JdbcTemplate jdbc,
+            ClassScheduleRepository classScheduleRepository
     ) {
         this.enrollmentService = enrollmentService;
         this.scheduleService = scheduleService;
@@ -134,6 +150,10 @@ class EnrollmentServiceTests {
         this.curriculumRepository = curriculumRepository;
         this.curriculumCourseRepository = curriculumCourseRepository;
         this.studentRepository = studentRepository;
+        this.studentCourseCreditRepository = studentCourseCreditRepository;
+        this.userRepository = userRepository;
+        this.jdbc = jdbc;
+        this.classScheduleRepository = classScheduleRepository;
     }
 
     @BeforeEach
@@ -531,5 +551,185 @@ class EnrollmentServiceTests {
         assertThat(response.validation().valid()).isFalse();
         assertThat(response.validation().blockingIssues()).extracting("code")
                 .contains("REQUIRED_COURSE_MISSING");
+    }
+
+    @Test
+    void optionalAndElectiveCoursesRemainSelectableButAreNotMandatory() {
+        CurriculumCourse optional = curriculumCourseFor(courseThree);
+        optional.setRequiredStatus(RequiredStatus.OPTIONAL);
+        curriculumCourseRepository.save(optional);
+        schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.MONDAY, "08:00", "09:00");
+        schedule(courseTwo, sectionA, facultyTwo, roomTwo, DayOfWeek.MONDAY, "09:00", "10:00");
+
+        EnrollmentResponse response = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+
+        assertThat(response.validation().valid()).isTrue();
+        assertThat(response.subjects()).extracting("courseCode")
+                .containsExactlyInAnyOrder(courseOne.getCourseCode(), courseTwo.getCourseCode());
+    }
+
+    @Test
+    void rejectsSameCourseAcrossDifferentSchedules() {
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(null));
+        ScheduleResponse first = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.MONDAY, "08:00", "09:00");
+        ScheduleResponse second = schedule(courseOne, sectionB, facultyTwo, roomTwo, DayOfWeek.TUESDAY, "08:00", "09:00");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(first.id()));
+
+        assertThatThrownBy(() -> enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(second.id())))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("The same course cannot be selected in multiple schedules");
+    }
+
+    @Test
+    void transfereeCanEnrollLowerYearBackSubject() {
+        student.setClassification(StudentClassification.TRANSFEREE);
+        student.setYearLevel(2);
+        studentRepository.save(student);
+        EnrollmentResponse enrollment = enrollmentService.create(new EnrollmentRequest(
+                student.getId(), schoolYear.getId(), semester.getId(), 2, null, "Back subject"));
+        ScheduleResponse lowerYear = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.WEDNESDAY, "08:00", "09:00");
+
+        EnrollmentResponse updated = enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(lowerYear.id()));
+
+        assertThat(updated.subjects()).extracting("courseCode").containsExactly(courseOne.getCourseCode());
+        assertThat(updated.validation().valid()).isTrue();
+    }
+
+    @Test
+    void corequisiteMustBeSatisfiedOrSelectedConcurrently() {
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
+        CurriculumCourse programming = curriculumCourseFor(courseTwo);
+        programming.setCorequisites(new LinkedHashSet<>(Set.of(courseOne)));
+        curriculumCourseRepository.save(programming);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(null));
+        ScheduleResponse programmingSchedule = schedule(courseTwo, sectionA, facultyTwo, roomTwo, DayOfWeek.MONDAY, "10:00", "11:00");
+        ScheduleResponse corequisiteSchedule = schedule(courseOne, sectionB, facultyOne, roomOne, DayOfWeek.TUESDAY, "10:00", "11:00");
+
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(programmingSchedule.id()));
+        assertThat(enrollmentService.validate(enrollment.id()).blockingIssues()).extracting("code")
+                .contains("COREQUISITE_NOT_SATISFIED");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(corequisiteSchedule.id()));
+        assertThat(enrollmentService.validate(enrollment.id()).valid()).isTrue();
+    }
+
+    @Test
+    void approvedCreditSatisfiesPrerequisiteWithoutCreatingInternalGrade() {
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
+        CurriculumCourse programming = curriculumCourseFor(courseTwo);
+        programming.setPrerequisites(new LinkedHashSet<>(Set.of(courseOne)));
+        curriculumCourseRepository.save(programming);
+        User registrar = new User();
+        registrar.setEmail("registrar-" + UUID.randomUUID() + "@sis.local");
+        registrar.setUsername("registrar-" + UUID.randomUUID());
+        registrar.setPasswordHash("hash");
+        registrar.setFullName("Test Registrar");
+        registrar.setActive(true);
+        registrar = userRepository.save(registrar);
+        StudentCourseCredit credit = new StudentCourseCredit();
+        credit.setStudent(student);
+        credit.setTargetCourse(courseOne);
+        credit.setEvaluationCaseId(UUID.randomUUID());
+        credit.setEvaluationMatchId(UUID.randomUUID());
+        credit.setCreditedUnits(courseOne.getCreditUnits());
+        credit.setSourceLabel("Approved transfer equivalency");
+        credit.setPostedBy(registrar);
+        studentCourseCreditRepository.save(credit);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(null));
+        ScheduleResponse schedule = schedule(courseTwo, sectionA, facultyTwo, roomTwo, DayOfWeek.THURSDAY, "10:00", "11:00");
+
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
+
+        assertThat(enrollmentService.validate(enrollment.id()).valid()).isTrue();
+    }
+
+    @Test
+    void probationEnrollmentFailsClosedWithoutConfiguredPolicy() {
+        student.setAcademicStatus(AcademicStatus.PROBATION);
+        studentRepository.save(student);
+
+        assertThatThrownBy(() -> enrollmentService.create(enrollmentRequest(sectionA.getId())))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(error -> ((BusinessRuleException) error).getCode())
+                .isEqualTo("ACADEMIC_POLICY_NOT_CONFIGURED");
+    }
+
+    @Test
+    void probationPolicyMaximumUnitsAppearsAsBlockingValidation() {
+        student.setAcademicStatus(AcademicStatus.PROBATION);
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
+        User registrar = testUser();
+        userRepository.flush();
+        jdbc.update("""
+                insert into enrollment_eligibility_policies(id,academic_status,school_year_id,program_id,
+                enrollment_allowed,maximum_units,requires_approval,active,created_by,created_at,updated_at)
+                values(?,?,?,?,?,?,?,?,?,current_timestamp,current_timestamp)
+                """, UUID.randomUUID(), "PROBATION", schoolYear.getId(), program.getId(), true,
+                BigDecimal.valueOf(3), true, true, registrar.getId());
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(null));
+        ScheduleResponse first = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.MONDAY, "08:00", "09:00");
+        ScheduleResponse second = schedule(courseTwo, sectionB, facultyTwo, roomTwo, DayOfWeek.TUESDAY, "08:00", "09:00");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(first.id()));
+
+        EnrollmentResponse overLimit = enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(second.id()));
+
+        assertThat(overLimit.validation().blockingIssues()).extracting("code").contains("ACADEMIC_UNIT_LIMIT_EXCEEDED");
+    }
+
+    @Test
+    void finalSeatCanBeConfirmedByOnlyOneEnrollment() {
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
+        Student secondStudent = new Student();
+        secondStudent.setStudentNumber("SECOND-" + UUID.randomUUID());
+        secondStudent.setFirstName("Second");
+        secondStudent.setLastName("Student");
+        secondStudent.setGender(Gender.OTHER);
+        secondStudent.setBirthdate(LocalDate.of(2004, 1, 1));
+        secondStudent.setStatus(StudentStatus.ACTIVE);
+        secondStudent.setProgram(program);
+        secondStudent.setCurriculum(curriculum);
+        secondStudent.setYearLevel(1);
+        secondStudent.setDateAdmitted(LocalDate.of(2026, 6, 1));
+        secondStudent.setSchoolYearAdmitted("2026-2027");
+        secondStudent.setClassification(StudentClassification.IRREGULAR);
+        secondStudent.setAcademicStatus(AcademicStatus.REGULAR);
+        secondStudent = studentRepository.save(secondStudent);
+        ScheduleResponse schedule = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "13:00", "14:00");
+        var scheduleEntity = classScheduleRepository.findById(schedule.id()).orElseThrow();
+        scheduleEntity.setCapacity(1);
+        classScheduleRepository.save(scheduleEntity);
+        EnrollmentResponse first = enrollmentService.create(enrollmentRequest(null));
+        EnrollmentResponse second = enrollmentService.create(new EnrollmentRequest(secondStudent.getId(), schoolYear.getId(),
+                semester.getId(), 1, null, "Competing final seat"));
+        enrollmentService.addSubject(first.id(), new EnrollmentSubjectRequest(schedule.id()));
+        enrollmentService.addSubject(second.id(), new EnrollmentSubjectRequest(schedule.id()));
+
+        enrollmentService.confirm(first.id());
+
+        assertThatThrownBy(() -> enrollmentService.confirm(second.id()))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(error -> ((BusinessRuleException) error).getCode())
+                .isEqualTo("ENROLLMENT_VALIDATION_FAILED");
+        assertThat(enrollmentService.validate(second.id()).blockingIssues()).extracting("code").contains("NO_AVAILABLE_SEATS");
+    }
+
+    private User testUser() {
+        User user = new User();
+        user.setEmail("registrar-" + UUID.randomUUID() + "@sis.local");
+        user.setUsername("registrar-" + UUID.randomUUID());
+        user.setPasswordHash("hash");
+        user.setFullName("Test Registrar");
+        user.setActive(true);
+        return userRepository.save(user);
+    }
+
+    private CurriculumCourse curriculumCourseFor(Course course) {
+        return curriculumCourseRepository.findByCurriculumIdOrderByYearLevelAscSemesterAscSortOrderAsc(curriculum.getId()).stream()
+                .filter(item -> item.getCourse().getId().equals(course.getId())).findFirst().orElseThrow();
     }
 }

@@ -6,5 +6,6 @@ public enum AdmissionType {
     RETURNEE,
     SHIFTEE,
     CROSS_ENROLLEE,
+    SECOND_DEGREE,
     CONTINUING_STUDENT
 }

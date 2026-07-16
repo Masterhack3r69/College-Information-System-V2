@@ -1,6 +1,7 @@
 package com.school.sis.enrollment.controller;
 
 import com.school.sis.common.response.ApiResponse;
+import com.school.sis.auth.security.SisUserDetails;
 import com.school.sis.common.response.PageResponse;
 import com.school.sis.enrollment.dto.EnrollmentCancelRequest;
 import com.school.sis.enrollment.dto.EnrollmentRequest;
@@ -11,11 +12,14 @@ import com.school.sis.enrollment.dto.EnrollmentSummaryResponse;
 import com.school.sis.enrollment.dto.EnrollmentUpdateRequest;
 import com.school.sis.enrollment.dto.EnrollmentValidationResponse;
 import com.school.sis.enrollment.dto.EnrollmentConfirmationResponse;
+import com.school.sis.enrollment.dto.EnrollmentCancellationReadinessResponse;
+import com.school.sis.enrollment.dto.EnrollmentStatusHistoryResponse;
 import com.school.sis.enrollment.entity.EnrollmentStatus;
 import com.school.sis.enrollment.service.EnrollmentService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,6 +30,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -100,5 +106,33 @@ public class EnrollmentController {
     @PreAuthorize("hasAuthority('ENROLLMENT_APPROVE')")
     public ApiResponse<EnrollmentResponse> cancel(@PathVariable UUID id, @Valid @RequestBody EnrollmentCancelRequest request) {
         return ApiResponse.success("Enrollment cancelled", enrollmentService.cancel(id, request.reason()));
+    }
+
+    @GetMapping("/{id}/cancellation-readiness")
+    @PreAuthorize("hasAuthority('ENROLLMENT_VIEW')")
+    public ApiResponse<EnrollmentCancellationReadinessResponse> cancellationReadiness(@PathVariable UUID id) {
+        return ApiResponse.success("Enrollment cancellation readiness retrieved", enrollmentService.cancellationReadiness(id));
+    }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("hasAuthority('ENROLLMENT_VIEW')")
+    public ApiResponse<List<EnrollmentStatusHistoryResponse>> history(@PathVariable UUID id) {
+        return ApiResponse.success("Enrollment status history retrieved", enrollmentService.statusHistory(id));
+    }
+
+    @PostMapping("/{id}/return-to-draft")
+    @PreAuthorize("hasAuthority('ENROLLMENT_APPROVE')")
+    public ApiResponse<EnrollmentResponse> returnToDraft(@PathVariable UUID id,
+                                                         @Valid @RequestBody EnrollmentCancelRequest request) {
+        return ApiResponse.success("Enrollment returned to draft", enrollmentService.returnToDraft(id, request.reason()));
+    }
+
+    @PostMapping("/{id}/eligibility-approval")
+    @PreAuthorize("hasAuthority('ENROLLMENT_APPROVE')")
+    public ApiResponse<Map<String, Object>> approveEligibility(@PathVariable UUID id,
+                                                               @Valid @RequestBody EnrollmentCancelRequest request,
+                                                               @AuthenticationPrincipal SisUserDetails principal) {
+        return ApiResponse.success("Enrollment eligibility approved",
+                enrollmentService.approveEligibility(id, request.reason(), principal));
     }
 }

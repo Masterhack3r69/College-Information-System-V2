@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import { Calculator, Eye, Loader2, Plus, Printer, ReceiptText, RotateCcw, Search, Trash2, WalletCards } from "lucide-react"
 import { openPdf, ApiError } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
+import { useAcademicTerm } from "@/lib/academic-term-context"
 import type { ActiveStatus, AssessmentStatus, FeeCategory, FeeComputationType, FeeItem, FeeRule, PaymentMethod } from "@/lib/types"
 import { useAssessment, useAssessments, useFee, useFees, useFeeStatus, useGenerateAssessment, usePendingAssessments, usePostPayment, useRecalculateAssessment, useSaveFee, useVoidPayment } from "@/hooks/use-finance"
 import { ApprovalQueueWorkspace, AssessmentFinanceControls, CashierSessionsWorkspace, FinanceDashboardWorkspace, FinanceReportsWorkspace, InstallmentTemplatesWorkspace, ReceiptSeriesWorkspace } from "@/pages/finance-operations"
@@ -50,11 +51,12 @@ export function FinancePage() {
 }
 
 function AssessmentsWorkspace({ canPay }: { canPay: boolean }) {
-  const schoolYears = useSchoolYears(0, 100).data?.items ?? []
-  const semesters = useSemesters(0, 100).data?.items ?? []
+  const academicTerm = useAcademicTerm()
+  const schoolYears = academicTerm.schoolYears
+  const semesters = academicTerm.semesters
   const programs = usePrograms("", 0, 200).data?.items ?? []
-  const activeYear = schoolYears.find(item => item.active)?.id ?? "all"
-  const activeSemester = semesters.find(item => item.active)?.id ?? "all"
+  const activeYear = academicTerm.schoolYearId || "all"
+  const activeSemester = academicTerm.semesterId || "all"
   const [view, setView] = useState("assessed")
   const [search, setSearch] = useState("")
   const [schoolYearId, setSchoolYearId] = useState<string>()

@@ -15,7 +15,7 @@
 ## User Roles
 
 - [x] Backend permissions and frontend guards for active workflows.
-- [ ] Define seeded permissions for `PROGRAM_HEAD` or confirm it is intentionally inactive.
+- [x] Seed scoped academic-evaluation and graduation-audit permissions for `PROGRAM_HEAD`.
 - [ ] Verify desired `READ_ONLY_STAFF` frontend experience.
 
 ## Student Records
@@ -26,13 +26,22 @@
 ## Academic Setup
 
 - [x] Master data, curriculum, schedules, conflicts, and grading setup.
+- [x] Eligibility policies and elective requirement groups.
 - [ ] Rerun academic-setup E2E suite against current code.
 
 ## Enrollment
 
 - [x] Administrative draft, validation, confirmation, cancellation, and history.
 - [x] Student self-service draft and submission with enrollment window.
+- [x] Mixed-year back subjects, approved-credit prerequisites, corequisites, policy gates, seat locks, history, return-to-draft, and cancellation readiness.
 - [ ] Add full student-submit → registrar-confirm E2E coverage.
+
+## Academic Exceptions
+
+- [x] Unified transfer, shifting, second-degree, and curriculum-migration evaluation workflow.
+- [x] Department-scoped grouped equivalency review and Registrar credit posting.
+- [x] Derived academic plan, posted credit reversal, explicit migration impact, and persisted graduation audit.
+- [ ] Add automated cross-account role/browser coverage and final-seat race test.
 
 ## Grading
 
@@ -55,6 +64,7 @@
 
 - [x] Enrollment, schedule, academics, finance, content, requests, profile, security.
 - [x] Registrar portal administration.
+- [x] Academic plan, credits, pending evaluations, and graduation-audit summaries.
 - [ ] Add student portal browser tests.
 
 ## Validation
@@ -69,10 +79,12 @@
 
 ## Testing
 
-- [x] Backend suite passes: 75 passed, 1 Docker-dependent test skipped.
+- [x] Backend suite passes: 89 discovered, 88 passed, 1 Docker-dependent test skipped.
 - [x] Frontend production build passes.
 - [ ] Fix frontend lint: 42 errors and 9 warnings in the latest run.
-- [ ] Run PostgreSQL Testcontainers test with Docker.
+- [x] Apply and validate Flyway V1–V20 against the live PostgreSQL 16 Docker Compose database.
+- [ ] Make local Testcontainers Docker auto-detection run instead of skipping.
+- [x] Run focused desktop and 375 px browser checks for enrollment academic surfaces with no console errors.
 - [ ] Run and stabilize full Playwright suite.
 
 ## Deployment
@@ -82,7 +94,7 @@
 
 ## Documentation
 
-- [x] MVP Obsidian vault reflects verified code as of 2026-07-13.
+- [x] MVP Obsidian vault reflects verified code through V20 as of 2026-07-16.
 - [ ] Keep notes synchronized as remaining items are implemented.
 
 ## Related Notes

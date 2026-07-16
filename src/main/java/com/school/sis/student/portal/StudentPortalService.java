@@ -1,5 +1,7 @@
 package com.school.sis.student.portal;
 
+import com.school.sis.academic.dto.AcademicPlanResponse;
+import com.school.sis.academic.service.AcademicProgressService;
 import com.school.sis.audit.service.AuditService;
 import com.school.sis.auth.entity.User;
 import com.school.sis.auth.repository.UserRepository;
@@ -25,9 +27,11 @@ public class StudentPortalService {
     private final JdbcTemplate jdbc; private final StudentPortalAccess access; private final UserRepository users;
     private final StudentContactRepository contacts; private final PasswordEncoder passwords; private final EnrollmentService enrollments;
     private final AuditService audit; private final FileStorageService storage;
+    private final AcademicProgressService academicProgress;
     public StudentPortalService(JdbcTemplate jdbc,StudentPortalAccess access,UserRepository users,StudentContactRepository contacts,
-                                PasswordEncoder passwords,EnrollmentService enrollments,AuditService audit,FileStorageService storage){
-        this.jdbc=jdbc;this.access=access;this.users=users;this.contacts=contacts;this.passwords=passwords;this.enrollments=enrollments;this.audit=audit;this.storage=storage;
+                                PasswordEncoder passwords,EnrollmentService enrollments,AuditService audit,FileStorageService storage,
+                                AcademicProgressService academicProgress){
+        this.jdbc=jdbc;this.access=access;this.users=users;this.contacts=contacts;this.passwords=passwords;this.enrollments=enrollments;this.audit=audit;this.storage=storage;this.academicProgress=academicProgress;
     }
 
     @Transactional(readOnly=true) public Map<String,Object> dashboard(SisUserDetails p){
@@ -77,22 +81,46 @@ public class StudentPortalService {
           select e.id,e.status,e.year_level as "yearLevel",sec.section_code as "sectionCode",sy.school_year as "schoolYear",sm.name as "semesterName",e.submitted_at as "submittedAt"
           from enrollments e join school_years sy on sy.id=e.school_year_id join semesters sm on sm.id=e.semester_id left join sections sec on sec.id=e.section_id
           where e.student_id=? and e.school_year_id=? and e.semester_id=? and e.status<>'CANCELLED' order by e.created_at desc limit 1""",access.studentId(p),t.get("schoolYearId"),t.get("semesterId"));
-        return rows.isEmpty()?Map.of():rows.getFirst();
+        if(rows.isEmpty())return Map.of();
+        var out=new LinkedHashMap<String,Object>(rows.getFirst());
+        EnrollmentResponse details=enrollments.get((UUID)out.get("id"));
+        out.put("programCode",details.programCode());out.put("totalCreditUnits",details.totalCreditUnits());
+        out.put("subjectCount",details.subjectCount());out.put("subjects",details.subjects());out.put("validation",details.validation());
+        return out;
     }
     @Transactional(readOnly=true) public List<Map<String,Object>> availableClasses(SisUserDetails p){var t=term();if(t.isEmpty())return List.of();return jdbc.queryForList("""
       select cs.id as "scheduleId",co.id as "courseId",co.course_code as "courseCode",co.course_title as "courseTitle",co.credit_units as units,
-      sec.id as "sectionId",sec.section_code as "sectionCode",r.room_code as "roomCode",concat(f.first_name,' ',f.last_name) as faculty
-      from students st join curriculum_courses cc on cc.curriculum_id=st.curriculum_id and cc.year_level=st.year_level
+      cc.id as "curriculumCourseId",cc.year_level as "curriculumYearLevel",cc.required_status as "requiredStatus",
+      (cc.year_level<st.year_level) as "backSubject",
+      case when cc.year_level<st.year_level then 'BACK_SUBJECT' when cc.required_status='ELECTIVE' then 'ELECTIVE'
+           when cc.required_status='OPTIONAL' then 'OPTIONAL' else 'NORMAL_TERM' end as "recommendationType",
+      sec.id as "sectionId",sec.section_code as "sectionCode",r.room_code as "roomCode",concat_ws(' ',f.first_name,f.last_name) as faculty,
+      cs.capacity-coalesce((select count(*) from enrollment_subjects occupied join enrollments oe on oe.id=occupied.enrollment_id
+        where occupied.class_schedule_id=cs.id and occupied.status='ENROLLED' and oe.status='CONFIRMED'),0) as "availableSeats",
+      exists(select 1 from enrollment_subjects selected join enrollments se on se.id=selected.enrollment_id
+        where selected.class_schedule_id=cs.id and selected.status='ENROLLED' and se.student_id=st.id
+          and se.school_year_id=? and se.semester_id=? and se.status in ('DRAFT','SUBMITTED','CONFIRMED')) as selected,
+      coalesce((select json_agg(json_build_object('dayOfWeek',m.day_of_week,'startTime',m.start_time,'endTime',m.end_time) order by m.day_of_week,m.start_time)
+        from schedule_meetings m where m.class_schedule_id=cs.id),'[]') as meetings
+      from students st left join student_educational_backgrounds seb on seb.student_id=st.id
+      join semesters sm on sm.id=?
+      join curriculum_courses cc on cc.curriculum_id=st.curriculum_id and (
+        ((st.classification in ('IRREGULAR','TRANSFEREE','RETURNEE','CROSS_ENROLLEE','GRADUATING')
+          or seb.admission_type in ('TRANSFEREE','RETURNEE','SHIFTEE','CROSS_ENROLLEE','SECOND_DEGREE')) and cc.year_level<=st.year_level)
+        or ((st.classification not in ('IRREGULAR','TRANSFEREE','RETURNEE','CROSS_ENROLLEE','GRADUATING') or st.classification is null)
+          and (seb.admission_type not in ('TRANSFEREE','RETURNEE','SHIFTEE','CROSS_ENROLLEE','SECOND_DEGREE') or seb.admission_type is null)
+          and cc.year_level=st.year_level
+          and regexp_replace(upper(cc.semester),'[^A-Z0-9]+','_','g')=regexp_replace(upper(sm.name),'[^A-Z0-9]+','_','g')))
       join courses co on co.id=cc.course_id join class_schedules cs on cs.course_id=co.id and cs.school_year_id=? and cs.semester_id=? and cs.status='ACTIVE'
-      join sections sec on sec.id=cs.section_id and sec.program_id=st.program_id left join rooms r on r.id=cs.room_id join faculty f on f.id=cs.faculty_id
-      where st.id=? order by co.course_code,sec.section_code""",t.get("schoolYearId"),t.get("semesterId"),access.studentId(p));}
+      join sections sec on sec.id=cs.section_id and sec.program_id=st.program_id left join rooms r on r.id=cs.room_id left join faculty f on f.id=cs.faculty_id
+      where st.id=? and not exists(select 1 from academic_records ar where ar.student_id=st.id and ar.course_id=co.id and ar.grade_status='LOCKED' and ar.remarks='PASSED')
+        and not exists(select 1 from student_course_credits cr where cr.student_id=st.id and cr.target_course_id=co.id and cr.active=true)
+      order by "backSubject" desc,cc.year_level,cc.sort_order,co.course_code,sec.section_code
+      """,t.get("schoolYearId"),t.get("semesterId"),t.get("semesterId"),t.get("schoolYearId"),t.get("semesterId"),access.studentId(p));}
     @Transactional public EnrollmentResponse createDraft(DraftRequest r,SisUserDetails p){ensureEnrollmentOpen();var t=term();return enrollments.create(new EnrollmentRequest(access.studentId(p),(UUID)t.get("schoolYearId"),(UUID)t.get("semesterId"),r.yearLevel(),r.sectionId(),r.remarks()));}
     @Transactional public EnrollmentResponse addSubject(UUID enrollmentId,UUID scheduleId,SisUserDetails p){ensureEnrollmentOpen();access.enrollment(enrollmentId,p);return enrollments.addSubject(enrollmentId,new EnrollmentSubjectRequest(scheduleId));}
     @Transactional public EnrollmentResponse dropSubject(UUID enrollmentId,UUID subjectId,SisUserDetails p){ensureEnrollmentOpen();access.enrollment(enrollmentId,p);return enrollments.dropSubject(enrollmentId,subjectId);}
-    @Transactional public EnrollmentResponse submit(UUID id,SisUserDetails p){ensureEnrollmentOpen();access.enrollment(id,p);var validation=enrollments.validate(id);if(!validation.valid())throw new BusinessRuleException("Enrollment has validation issues");
-        int changed=jdbc.update("update enrollments set status='SUBMITTED',submitted_at=now(),updated_at=now() where id=? and student_id=? and status='DRAFT'",id,access.studentId(p));if(changed==0)throw new BusinessRuleException("Only a draft enrollment can be submitted");
-        jdbc.update("insert into enrollment_status_history(id,enrollment_id,from_status,to_status,remarks) values(gen_random_uuid(),?,'DRAFT','SUBMITTED','Submitted by student')",id);
-        audit.log("STUDENT_ENROLLMENT_SUBMITTED","ENROLLMENT","Enrollment",id,Map.of("status","DRAFT"),Map.of("status","SUBMITTED"));return enrollments.get(id);}
+    @Transactional public EnrollmentResponse submit(UUID id,SisUserDetails p){ensureEnrollmentOpen();access.enrollment(id,p);return enrollments.submitForReview(id);}
     private void ensureEnrollmentOpen(){var t=term();if(t.isEmpty()||!Boolean.TRUE.equals(t.get("enrollmentEnabled")))throw new BusinessRuleException("Online enrollment is not enabled");Instant now=Instant.now(),opens=asInstant(t.get("enrollmentOpensAt")),closes=asInstant(t.get("enrollmentClosesAt"));if(opens!=null&&now.isBefore(opens))throw new BusinessRuleException("Online enrollment has not opened");if(closes!=null&&now.isAfter(closes))throw new BusinessRuleException("Online enrollment is closed");}
     private Instant asInstant(Object value){if(value instanceof Instant x)return x;if(value instanceof java.time.OffsetDateTime x)return x.toInstant();if(value instanceof java.sql.Timestamp x)return x.toInstant();return null;}
 
@@ -112,6 +140,26 @@ public class StudentPortalService {
       count(ccu.id) as "requiredCourses",count(ar.id) as "completedCourses"
       from students st join curriculum_courses cc on cc.curriculum_id=st.curriculum_id join courses ccu on ccu.id=cc.course_id
       left join academic_records ar on ar.student_id=st.id and ar.course_id=ccu.id and ar.grade_status='LOCKED' and ar.earned_units>0 where st.id=?""",access.studentId(p));}
+    @Transactional(readOnly=true) public AcademicPlanResponse academicPlan(SisUserDetails p){return academicProgress.plan(access.studentId(p));}
+    @Transactional(readOnly=true) public List<Map<String,Object>> credits(SisUserDetails p){return jdbc.queryForList("""
+      select cr.id,cr.target_course_id as "courseId",co.course_code as "courseCode",co.course_title as "courseTitle",
+      cr.credited_units as "creditedUnits",cr.source_label as "sourceLabel",cr.posted_at as "postedAt",cr.active,
+      ec.id as "evaluationCaseId",ec.evaluation_type as "evaluationType"
+      from student_course_credits cr join courses co on co.id=cr.target_course_id
+      join academic_evaluation_cases ec on ec.id=cr.evaluation_case_id where cr.student_id=?
+      order by cr.active desc,cr.posted_at desc""",access.studentId(p));}
+    @Transactional(readOnly=true) public List<Map<String,Object>> evaluations(SisUserDetails p){return jdbc.queryForList("""
+      select ec.id,ec.evaluation_type as "evaluationType",ec.status,ec.source_institution as "sourceInstitution",
+      ec.reason,ec.submitted_at as "submittedAt",ec.registrar_decided_at as "decidedAt",cu.curriculum_code as "targetCurriculumCode",
+      (select count(*) from academic_evaluation_source_courses sc where sc.case_id=ec.id) as "sourceCourseCount",
+      (select count(*) from academic_evaluation_matches em where em.case_id=ec.id and em.status='RECOMMENDED') as "recommendedMatchCount"
+      from academic_evaluation_cases ec join curricula cu on cu.id=ec.target_curriculum_id
+      where ec.student_id=? order by ec.created_at desc""",access.studentId(p));}
+    @Transactional(readOnly=true) public List<Map<String,Object>> graduationAudits(SisUserDetails p){return jdbc.queryForList("""
+      select ga.id,ga.result,ga.required_units as "totalRequiredUnits",ga.earned_units as "earnedUnits",
+      ga.missing_required_count as "missingRequiredCount",ga.unmet_elective_group_count as "unmetElectiveGroupCount",
+      ga.pending_evaluation_count as "pendingEvaluationCount",ga.run_at as "auditedAt"
+      from graduation_audits ga where ga.student_id=? order by ga.run_at desc""",access.studentId(p));}
     @Transactional(readOnly=true) public List<Map<String,Object>> attendance(SisUserDetails p){var t=term();if(!Boolean.TRUE.equals(t.get("attendanceVisible")))return List.of();return jdbc.queryForList("""
       select co.course_code as "courseCode",count(ae.id) as meetings,
       count(*) filter(where ae.attendance_status='PRESENT') as present,count(*) filter(where ae.attendance_status='LATE') as late,

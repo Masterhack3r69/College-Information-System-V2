@@ -1,5 +1,6 @@
 package com.school.sis.student.portal;
 
+import com.school.sis.academic.dto.AcademicPlanResponse;
 import com.school.sis.auth.security.SisUserDetails;
 import com.school.sis.common.response.ApiResponse;
 import com.school.sis.enrollment.dto.EnrollmentResponse;
@@ -31,6 +32,10 @@ public class StudentPortalController {
     @GetMapping("/schedule") @PreAuthorize("hasAuthority('STUDENT_ACADEMIC_SELF')") public ApiResponse<List<Map<String,Object>>> schedule(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Schedule retrieved",service.schedule(p));}
     @GetMapping("/grades") @PreAuthorize("hasAuthority('STUDENT_ACADEMIC_SELF')") public ApiResponse<List<Map<String,Object>>> grades(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Posted grades retrieved",service.grades(p));}
     @GetMapping("/curriculum-progress") @PreAuthorize("hasAuthority('STUDENT_ACADEMIC_SELF')") public ApiResponse<Map<String,Object>> progress(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Curriculum progress retrieved",service.progress(p));}
+    @GetMapping("/academic-plan") @PreAuthorize("hasAuthority('STUDENT_ACADEMIC_SELF')") public ApiResponse<AcademicPlanResponse> academicPlan(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Academic plan retrieved",service.academicPlan(p));}
+    @GetMapping("/course-credits") @PreAuthorize("hasAuthority('STUDENT_ACADEMIC_SELF')") public ApiResponse<List<Map<String,Object>>> credits(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Posted course credits retrieved",service.credits(p));}
+    @GetMapping("/academic-evaluations") @PreAuthorize("hasAuthority('STUDENT_ACADEMIC_SELF')") public ApiResponse<List<Map<String,Object>>> evaluations(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Academic evaluations retrieved",service.evaluations(p));}
+    @GetMapping("/graduation-audits") @PreAuthorize("hasAuthority('STUDENT_ACADEMIC_SELF')") public ApiResponse<List<Map<String,Object>>> graduationAudits(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Graduation audits retrieved",service.graduationAudits(p));}
     @GetMapping("/attendance") @PreAuthorize("hasAuthority('STUDENT_ATTENDANCE_SELF')") public ApiResponse<List<Map<String,Object>>> attendance(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Attendance summary retrieved",service.attendance(p));}
     @GetMapping("/grade-report") @PreAuthorize("hasAuthority('STUDENT_ACADEMIC_SELF')") public ResponseEntity<byte[]> report(@AuthenticationPrincipal SisUserDetails p){var pdf=reports.unofficialGradeReport(p.studentId(),p);return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION,ContentDisposition.inline().filename(pdf.filename()).build().toString()).body(pdf.bytes());}
     @GetMapping("/assessments") @PreAuthorize("hasAuthority('STUDENT_FINANCE_SELF')") public ApiResponse<List<Map<String,Object>>> finance(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Assessments retrieved",service.finance(p));}
@@ -48,7 +53,7 @@ public class StudentPortalController {
     private ResponseEntity<byte[]> download(StudentPortalService.Download d){return ResponseEntity.ok().contentType(MediaType.parseMediaType(d.mimeType())).header(HttpHeaders.CONTENT_DISPOSITION,ContentDisposition.attachment().filename(d.filename()).build().toString()).body(d.bytes());}
     public record ProfileRequest(@NotBlank @Email String email,String mobileNumber,String telephoneNumber,String currentAddress,String emergencyContactName,String emergencyContactNumber,String emergencyContactRelationship,String emergencyContactAddress){}
     public record PasswordRequest(@NotBlank String currentPassword,@NotBlank String newPassword,String refreshToken){}
-    public record DraftRequest(@Min(1) int yearLevel,@NotNull UUID sectionId,String remarks){}
+    public record DraftRequest(@Min(1) int yearLevel,UUID sectionId,String remarks){}
     public record SubjectRequest(@NotNull UUID scheduleId){}
     public record ServiceRequest(@NotBlank String requestType,String documentName,@NotBlank String purpose,String comment){}
 }

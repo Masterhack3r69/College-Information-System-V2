@@ -29,13 +29,13 @@ public class SemesterController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ACADEMIC_SETUP_VIEW','FACULTY_CLASS_VIEW')")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<PageResponse<SemesterResponse>> list(Pageable pageable) {
         return ApiResponse.success("Semesters retrieved", semesterService.list(pageable));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ACADEMIC_SETUP_VIEW','FACULTY_CLASS_VIEW')")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<SemesterResponse> get(@PathVariable UUID id) {
         return ApiResponse.success("Semester retrieved", semesterService.get(id));
     }

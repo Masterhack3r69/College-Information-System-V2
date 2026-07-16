@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertTriangle, CalendarDays, Edit, Loader2, Plus, Search, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { api, ApiError } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
-import type { CurriculumDetailResponse, Faculty, Meeting, PageResponse, Program, Room, Schedule, ScheduleConflictResponse, ScheduleRequest, SchoolYear, Section, Semester } from "@/lib/types"
+import { useAcademicTerm } from "@/lib/academic-term-context"
+import type { CurriculumDetailResponse, Faculty, Meeting, PageResponse, Program, Room, Schedule, ScheduleConflictResponse, ScheduleRequest, Section } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -111,10 +112,11 @@ function layoutDay(items: Schedule[], day: string): CalendarEntry[] {
 
 export function SchedulesPage() {
   const { can } = useAuth()
+  const academicTerm = useAcademicTerm()
   const qc = useQueryClient()
   const [search, setSearch] = useState("")
-  const [schoolYearId, setSchoolYearId] = useState("")
-  const [semesterId, setSemesterId] = useState("")
+  const schoolYearId = academicTerm.schoolYearId
+  const semesterId = academicTerm.semesterId
   const [programId, setProgramId] = useState("all")
   const [curriculumId, setCurriculumId] = useState("all")
   const [sectionId, setSectionId] = useState("all")
@@ -128,15 +130,10 @@ export function SchedulesPage() {
   const [conflicts, setConflicts] = useState<ScheduleConflictResponse | null>(null)
   const [archiveTarget, setArchiveTarget] = useState<Schedule | null>(null)
 
-  const years = useQuery({ queryKey: ["school-years", "schedule"], queryFn: () => api<PageResponse<SchoolYear>>("/school-years?size=50") })
-  const semesters = useQuery({ queryKey: ["semesters", "schedule"], queryFn: () => api<PageResponse<Semester>>("/semesters?size=20") })
   const programs = useQuery({ queryKey: ["programs", "schedule"], queryFn: () => api<PageResponse<Program>>("/programs?size=200") })
   const sections = useQuery({ queryKey: ["sections", "schedule"], queryFn: () => api<PageResponse<Section>>("/sections?size=500") })
   const faculty = useQuery({ queryKey: ["faculty", "schedule"], queryFn: () => api<PageResponse<Faculty>>("/faculty?size=500") })
   const rooms = useQuery({ queryKey: ["rooms", "schedule"], queryFn: () => api<PageResponse<Room>>("/rooms?size=500") })
-
-  useEffect(() => { if (!schoolYearId && years.data?.items.length) setSchoolYearId(years.data.items.find(item => item.active)?.id ?? years.data.items[0].id) }, [schoolYearId, years.data])
-  useEffect(() => { if (!semesterId && semesters.data?.items.length) setSemesterId(semesters.data.items.find(item => item.active)?.id ?? semesters.data.items[0].id) }, [semesterId, semesters.data])
 
   const params = new URLSearchParams({ size: "500" })
   if (search) params.set("search", search)
@@ -177,8 +174,8 @@ export function SchedulesPage() {
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight text-[#0b1f3a]">Schedules</h1><p className="mt-1 text-sm text-muted-foreground">Create and manage class schedules by academic term.</p></div>{can("SCHEDULE_MANAGE") && <Button onClick={openCreate} className="bg-[#0969da] hover:bg-[#075dbf]"><Plus/>New Schedule</Button>}</div>
     <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
       <div className="relative"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground"/><Input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search course, section, faculty or room" className="pl-9"/></div>
-      <FilterSelect value={schoolYearId} onChange={setSchoolYearId} placeholder="School year" items={years.data?.items.map(item => ({ value: item.id, label: item.schoolYear })) ?? []}/>
-      <FilterSelect value={semesterId} onChange={setSemesterId} placeholder="Semester" items={semesters.data?.items.map(item => ({ value: item.id, label: item.name })) ?? []}/>
+      <FilterSelect value={schoolYearId} onChange={value => academicTerm.setTerm(value, semesterId)} placeholder="School year" items={academicTerm.schoolYears.map(item => ({ value: item.id, label: item.schoolYear }))}/>
+      <FilterSelect value={semesterId} onChange={value => academicTerm.setTerm(schoolYearId, value)} placeholder="Semester" items={academicTerm.semesters.map(item => ({ value: item.id, label: item.name }))}/>
       <FilterSelect value={programId} onChange={value => { setProgramId(value); setCurriculumId("all"); setSectionId("all") }} placeholder="Program" items={[{ value: "all", label: "All Programs" }, ...(programs.data?.items.map(item => ({ value: item.id, label: item.programCode })) ?? [])]}/>
       <FilterSelect value={curriculumId} onChange={setCurriculumId} placeholder="Curriculum" items={[{ value: "all", label: "All Curricula" }, ...curriculumOptions.map(([value,label]) => ({ value, label }))]}/>
       <FilterSelect value={sectionId} onChange={setSectionId} placeholder="Section" items={[{ value: "all", label: "All Sections" }, ...visibleSections.map(item => ({ value: item.id, label: item.sectionCode }))]}/>
@@ -193,7 +190,7 @@ export function SchedulesPage() {
   </div>
 }
 
-function FilterSelect({ value, onChange, placeholder, items }: { value: string; onChange: (value: string) => void; placeholder: string; items: { value: string; label: string }[] }) { return <Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue placeholder={placeholder}/></SelectTrigger><SelectContent>{items.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select> }
+function FilterSelect({ value, onChange, placeholder, items }: { value: string; onChange: (value: string) => void; placeholder: string; items: { value: string; label: string }[] }) { return <Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue placeholder={placeholder}/></SelectTrigger><SelectContent><SelectGroup>{items.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectGroup></SelectContent></Select> }
 function ScheduleTable({ items, loading, manageable, onEdit, onArchive }: { items: Schedule[]; loading: boolean; manageable: boolean; onEdit: (item: Schedule) => void; onArchive: (item: Schedule) => void }) { return <div className="overflow-hidden rounded-lg border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Course</TableHead><TableHead>Section</TableHead><TableHead>Faculty</TableHead><TableHead>Room</TableHead><TableHead>Meetings</TableHead><TableHead>Capacity</TableHead><TableHead>Status</TableHead>{manageable && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell colSpan={8} className="h-32 text-center"><Loader2 className="mx-auto animate-spin"/></TableCell></TableRow> : items.length ? items.map(item => <TableRow key={item.id}><TableCell><p className="font-medium text-[#0b1f3a]">{item.courseCode}</p><p className="max-w-60 text-xs text-muted-foreground">{item.courseTitle}</p></TableCell><TableCell>{item.sectionCode}</TableCell><TableCell>{item.facultyName}</TableCell><TableCell>{item.roomCode}</TableCell><TableCell className="whitespace-nowrap text-xs space-y-1">{item.meetings.map((m, i) => <div key={i}>{m.dayOfWeek.slice(0, 3)} {m.startTime.slice(0, 5)}–{m.endTime.slice(0, 5)}</div>)}</TableCell><TableCell>{item.enrolledCount} / {item.capacity}</TableCell><TableCell><Badge variant={item.status === "ACTIVE" ? "default" : "secondary"}>{item.status}</Badge></TableCell>{manageable && <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => onEdit(item)} aria-label={`Edit ${item.courseCode}`}><Edit/></Button><Button variant="ghost" size="icon" onClick={() => onArchive(item)} aria-label={`Archive ${item.courseCode}`}><Trash2/></Button></TableCell>}</TableRow>) : <TableRow><TableCell colSpan={8} className="h-32 text-center text-muted-foreground">No schedules match the selected term and filters.</TableCell></TableRow>}</TableBody></Table></div></div> }
 function WeeklyView({ items }: { items: Schedule[] }) {
   const range = useMemo(() => calendarRange(items), [items])

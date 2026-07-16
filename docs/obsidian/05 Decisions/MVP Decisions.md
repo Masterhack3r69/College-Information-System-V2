@@ -18,7 +18,7 @@
 
 - Status: Accepted
 - Reason: PostgreSQL supports constraints, JSONB audit values, indexing, and the relational workflows required by the MVP.
-- Current impact: Flyway `V1`–`V15` is the physical schema source; Hibernate validates it.
+- Current impact: Flyway `V1`–`V20` is the physical schema source; Hibernate validates mapped entities against it.
 - Future consideration: Maintain migration tests against real PostgreSQL.
 
 ## JWT Access Tokens and Persisted Refresh Tokens
@@ -33,7 +33,7 @@
 - Status: Accepted
 - Reason: Roles alone are too coarse for registrar/cashier/faculty/student boundaries.
 - Current impact: Seeded roles grant named permissions, controller methods enforce them, and faculty/student helpers enforce record ownership.
-- Future consideration: Resolve the currently unseeded `PROGRAM_HEAD` permission model.
+- Future consideration: Keep expanding permission/ownership tests as new role-scoped modules are added. `PROGRAM_HEAD` now has department-scoped academic evaluation and graduation-audit permissions.
 
 ## Local Files for MVP Uploads
 
@@ -54,4 +54,3 @@
 - [[System Architecture]]
 - [[Authentication and Roles]]
 - [[MVP Scope]]
-

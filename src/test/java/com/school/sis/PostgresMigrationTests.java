@@ -31,8 +31,23 @@ class PostgresMigrationTests {
     @Test void allMigrationsApplyAndHibernateValidates() {
         Integer count = jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class);
         String latest = jdbc.queryForObject("select version from flyway_schema_history order by installed_rank desc limit 1", String.class);
-        assertThat(count).isEqualTo(17);
-        assertThat(latest).isEqualTo("17");
+        assertThat(count).isEqualTo(20);
+        assertThat(latest).isEqualTo("20");
+
+        Integer evaluationTables = jdbc.queryForObject("""
+                select count(*) from information_schema.tables
+                where table_schema='public' and table_name in (
+                  'academic_evaluation_cases','academic_evaluation_source_courses','academic_evaluation_matches',
+                  'student_course_credits','enrollment_eligibility_policies','graduation_audits')
+                """, Integer.class);
+        assertThat(evaluationTables).isEqualTo(6);
+
+        Integer removedAcademicEnrollmentGrants = jdbc.queryForObject("""
+                select count(*) from role_permissions rp join roles r on r.id=rp.role_id
+                join permissions p on p.id=rp.permission_id
+                where r.name in ('DEAN','PROGRAM_HEAD','FACULTY') and p.name='ENROLLMENT_VIEW'
+                """, Integer.class);
+        assertThat(removedAcademicEnrollmentGrants).isZero();
 
         Integer financeManager = jdbc.queryForObject("select count(*) from roles where name='FINANCE_MANAGER'", Integer.class);
         Integer financePermissions = jdbc.queryForObject("select count(*) from permissions where name like 'FINANCE_%'", Integer.class);
