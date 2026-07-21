@@ -25,6 +25,11 @@ public class Room extends AuditableEntity {
 
     private Integer capacity;
 
+    private String building;
+
+    @Column(name = "room_type", length = 40)
+    private String roomType;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ActiveStatus status = ActiveStatus.ACTIVE;
@@ -41,6 +46,10 @@ public class Room extends AuditableEntity {
     public void setRoomName(String roomName) { this.roomName = roomName; }
     public Integer getCapacity() { return capacity; }
     public void setCapacity(Integer capacity) { this.capacity = capacity; }
+    public String getBuilding() { return building; }
+    public void setBuilding(String building) { this.building = building; }
+    public String getRoomType() { return roomType; }
+    public void setRoomType(String roomType) { this.roomType = roomType; }
     public ActiveStatus getStatus() { return status; }
     public void setStatus(ActiveStatus status) { this.status = status; }
 }

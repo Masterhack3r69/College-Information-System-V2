@@ -79,12 +79,12 @@
 
 ## Testing
 
-- [x] Backend suite passes: 89 discovered, 88 passed, 1 Docker-dependent test skipped.
+- [x] Backend suite passes: 100 tests, 0 failures/errors/skips, including Testcontainers PostgreSQL coverage.
 - [x] Frontend production build passes.
 - [ ] Fix frontend lint: 42 errors and 9 warnings in the latest run.
-- [x] Apply and validate Flyway V1–V20 against the live PostgreSQL 16 Docker Compose database.
-- [ ] Make local Testcontainers Docker auto-detection run instead of skipping.
-- [x] Run focused desktop and 375 px browser checks for enrollment academic surfaces with no console errors.
+- [x] Apply and validate Flyway V1–V22 against the live PostgreSQL 16 Docker Compose database.
+- [x] Run local Testcontainers on Docker Desktop 29 with `-Dapi.version=1.44`.
+- [x] Run focused desktop and 375 px browser checks for enrollment academic and scheduling surfaces with no console errors.
 - [ ] Run and stabilize full Playwright suite.
 
 ## Deployment

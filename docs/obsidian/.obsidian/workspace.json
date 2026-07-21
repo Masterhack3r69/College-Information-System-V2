@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "7513e036178bb8be",
+        "id": "7d36c2f01cfbc166",
         "type": "tabs",
         "children": [
           {
-            "id": "9a13b58efe6a20e2",
+            "id": "b646273e10846369",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -179,8 +179,11 @@
       "bases:Create new base": false
     }
   },
-  "active": "9a13b58efe6a20e2",
+  "active": "b646273e10846369",
   "lastOpenFiles": [
+    "02 Modules/Scheduling.md",
+    "Untitled.canvas",
+    "Untitled.base",
     "03 Technical/Finance Endpoints.md",
     "03 Technical/Finance Data Dictionary.md",
     "02 Modules/Academic Setup.md",

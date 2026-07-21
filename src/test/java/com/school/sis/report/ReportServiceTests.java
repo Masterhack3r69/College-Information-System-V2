@@ -29,6 +29,7 @@ import com.school.sis.report.service.PdfReport;
 import com.school.sis.report.service.ReportService;
 import com.school.sis.schedule.dto.ScheduleMeetingRequest;
 import com.school.sis.schedule.dto.ScheduleRequest;
+import com.school.sis.schedule.dto.ScheduleLifecycleRequest;
 import com.school.sis.schedule.dto.ScheduleResponse;
 import com.school.sis.schedule.entity.ScheduleStatus;
 import com.school.sis.schedule.service.ScheduleService;
@@ -210,6 +211,7 @@ class ReportServiceTests {
         room.setRoomCode("REP-RM-" + suffix);
         room.setRoomName("Report Room");
         room.setCapacity(40);
+        room.setRoomType("GENERAL");
         room.setStatus(ActiveStatus.ACTIVE);
         room = roomRepository.save(room);
 
@@ -240,6 +242,7 @@ class ReportServiceTests {
         section.setSchoolYear(schoolYear);
         section.setSemester(semester);
         section.setYearLevel(1);
+        section.setMaximumCapacity(40);
         section.setStatus(ActiveStatus.ACTIVE);
         section = sectionRepository.save(section);
 
@@ -268,15 +271,17 @@ class ReportServiceTests {
         student.setAcademicStatus(AcademicStatus.REGULAR);
         student = studentRepository.save(student);
 
-        schedule = scheduleService.create(new ScheduleRequest(
+        ScheduleResponse draftSchedule = scheduleService.create(new ScheduleRequest(
                 section.getId(),
                 course.getId(),
                 faculty.getId(),
                 room.getId(),
                 40,
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 List.of(new ScheduleMeetingRequest(DayOfWeek.MONDAY, LocalTime.parse("09:00"), LocalTime.parse("10:00")))
         ));
+        schedule = scheduleService.activate(draftSchedule.id(),
+                new ScheduleLifecycleRequest(draftSchedule.version(), null, false, List.of()), null);
         enrollment = enrollmentService.create(new EnrollmentRequest(student.getId(), schoolYear.getId(), semester.getId(), student.getYearLevel(), section.getId(), null));
         enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
         enrollment = enrollmentService.confirm(enrollment.id());

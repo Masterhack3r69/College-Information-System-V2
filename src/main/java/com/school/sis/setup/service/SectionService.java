@@ -18,6 +18,9 @@ import com.school.sis.setup.repository.ProgramRepository;
 import com.school.sis.setup.repository.SchoolYearRepository;
 import com.school.sis.setup.repository.SectionRepository;
 import com.school.sis.setup.repository.SemesterRepository;
+import com.school.sis.enrollment.repository.EnrollmentRepository;
+import com.school.sis.enrollment.entity.EnrollmentStatus;
+import com.school.sis.schedule.repository.ClassScheduleRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +36,8 @@ public class SectionService {
     private final SchoolYearRepository schoolYearRepository;
     private final SemesterRepository semesterRepository;
     private final AuditService auditService;
+    private final EnrollmentRepository enrollmentRepository;
+    private final ClassScheduleRepository classScheduleRepository;
 
     public SectionService(
             SectionRepository sectionRepository,
@@ -40,7 +45,9 @@ public class SectionService {
             CurriculumRepository curriculumRepository,
             SchoolYearRepository schoolYearRepository,
             SemesterRepository semesterRepository,
-            AuditService auditService
+            AuditService auditService,
+            EnrollmentRepository enrollmentRepository,
+            ClassScheduleRepository classScheduleRepository
     ) {
         this.sectionRepository = sectionRepository;
         this.programRepository = programRepository;
@@ -48,6 +55,8 @@ public class SectionService {
         this.schoolYearRepository = schoolYearRepository;
         this.semesterRepository = semesterRepository;
         this.auditService = auditService;
+        this.enrollmentRepository = enrollmentRepository;
+        this.classScheduleRepository = classScheduleRepository;
     }
 
     @Transactional(readOnly = true)
@@ -88,6 +97,9 @@ public class SectionService {
         if (status == ActiveStatus.ACTIVE && section.getCurriculum() == null) {
             throw new BusinessRuleException("Assign a curriculum before activating this section");
         }
+        if (status == ActiveStatus.INACTIVE && classScheduleRepository.existsActiveReference(id)) {
+            throw new BusinessRuleException("ACTIVE_SCHEDULE_REFERENCE", "Section is referenced by an active schedule");
+        }
         ActiveStatus before = section.getStatus();
         section.setStatus(status);
         SectionResponse response = toResponse(section); auditService.log("SECTION_STATUS_UPDATED", AuditModule.ACADEMIC_SETUP, "Section", id, java.util.Map.of("status", before), java.util.Map.of("status", status)); return response;
@@ -116,6 +128,7 @@ public class SectionService {
         section.setSchoolYear(schoolYear);
         section.setSemester(semester);
         section.setYearLevel(request.yearLevel());
+        section.setMaximumCapacity(request.maximumCapacity());
         section.setStatus(request.status() == null ? ActiveStatus.ACTIVE : request.status());
     }
 
@@ -132,6 +145,8 @@ public class SectionService {
                 section.getSemester().getId(),
                 section.getSemester().getName(),
                 section.getYearLevel(),
+                section.getMaximumCapacity(),
+                enrollmentRepository.countBySectionIdAndStatus(section.getId(), EnrollmentStatus.CONFIRMED),
                 section.getStatus()
         );
     }

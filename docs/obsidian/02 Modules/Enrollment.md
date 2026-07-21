@@ -31,7 +31,9 @@ Implemented through Flyway V20. See [[Academic Exceptions]].
 - A course cannot be selected twice through different schedules.
 - Schedule term, program, curriculum, status, section rules, meeting conflicts, and seats are validated.
 - Confirmation locks all selected `class_schedules` in stable ID order before recalculating confirmed occupancy.
+- Only `ACTIVE` schedules are selectable. Scheduling revisions retain the same schedule ID, so enrollment-subject ownership survives room/time changes.
 - Capacity counts exclude the enrollment being validated, preventing self-count rejection.
+- Schedule capacity cannot be revised below confirmed schedule occupancy, and section maximum capacity is enforced by both scheduling and enrollment flows.
 - Prerequisites are satisfied only by passed locked internal records or active approved course credits.
 - Corequisites must already be satisfied or selected in the same load.
 - `REQUIRED` curriculum courses are mandatory for regular loads. `OPTIONAL` and `ELECTIVE` courses remain selectable and do not individually block confirmation.
@@ -69,7 +71,7 @@ Independent page data uses TanStack Query keys and invalidates enrollment, avail
 
 ## Database Entities
 
-`enrollments`, `enrollment_subjects`, `enrollment_status_history`, `enrollment_eligibility_policies`, `enrollment_eligibility_approvals`, class schedules, students, curricula, academic records, and approved course credits.
+`enrollments`, `enrollment_subjects`, `enrollment_status_history`, `enrollment_eligibility_policies`, `enrollment_eligibility_approvals`, stable class schedules/revised meetings, students, curricula, academic records, and approved course credits.
 
 ## Verification
 
@@ -88,3 +90,4 @@ Admissions intake, special/non-degree enrollment, international compliance, brid
 - [[Academic Setup]]
 - [[Billing]]
 - [[Student Portal]]
+- [[Scheduling]]

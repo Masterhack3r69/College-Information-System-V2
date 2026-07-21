@@ -49,6 +49,10 @@ const sectionSchema = z.object({
     (val) => (val === "" || val === undefined || val === null ? undefined : val),
     z.coerce.number().int("Year level must be an integer").min(1, "Year level must be at least 1")
   ),
+  maximumCapacity: z.preprocess(
+    (val) => (val === "" || val === undefined || val === null ? undefined : val),
+    z.coerce.number().int("Capacity must be an integer").min(1, "Maximum capacity is required")
+  ),
 })
 
 type SectionFormValues = z.infer<typeof sectionSchema>
@@ -89,6 +93,7 @@ export function SectionsTab() {
       schoolYearId: "",
       semesterId: "",
       yearLevel: undefined,
+      maximumCapacity: 40,
     },
   })
 
@@ -101,6 +106,7 @@ export function SectionsTab() {
       schoolYearId: "",
       semesterId: "",
       yearLevel: undefined,
+      maximumCapacity: 40,
     })
     setIsOpen(true)
   }
@@ -114,6 +120,7 @@ export function SectionsTab() {
       schoolYearId: item.schoolYearId,
       semesterId: item.semesterId,
       yearLevel: item.yearLevel,
+      maximumCapacity: item.maximumCapacity ?? 40,
     })
     setIsOpen(true)
   }
@@ -209,6 +216,7 @@ export function SectionsTab() {
               <TableHead>School Year</TableHead>
               <TableHead>Semester</TableHead>
               <TableHead>Year Level</TableHead>
+              <TableHead>Capacity</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[100px] text-right">Actions</TableHead>
             </TableRow>
@@ -216,7 +224,7 @@ export function SectionsTab() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading sections...
                   </div>
@@ -224,7 +232,7 @@ export function SectionsTab() {
               </TableRow>
             ) : !data?.items.length ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                   No sections found.
                 </TableCell>
               </TableRow>
@@ -237,6 +245,7 @@ export function SectionsTab() {
                   <TableCell>{item.schoolYear || "—"}</TableCell>
                   <TableCell>{item.semesterName || "—"}</TableCell>
                   <TableCell>{item.yearLevel}</TableCell>
+                  <TableCell>{item.confirmedCount ?? 0} / {item.maximumCapacity ?? <span className="text-amber-600">Not configured</span>}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <button
@@ -470,6 +479,12 @@ export function SectionsTab() {
               {errors.yearLevel && (
                 <p className="text-xs text-destructive">{errors.yearLevel.message}</p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="maximumCapacity">Maximum Capacity</Label>
+              <Input id="maximumCapacity" type="number" min={1} placeholder="e.g. 40" {...register("maximumCapacity")} className={cn(errors.maximumCapacity && "border-destructive focus-visible:ring-destructive")}/>
+              {errors.maximumCapacity && <p className="text-xs text-destructive">{errors.maximumCapacity.message}</p>}
             </div>
 
             <DialogFooter className="pt-4">

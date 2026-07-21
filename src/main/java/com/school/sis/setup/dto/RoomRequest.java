@@ -8,6 +8,11 @@ public record RoomRequest(
         @NotBlank String roomCode,
         @NotBlank String roomName,
         @Min(0) Integer capacity,
+        String building,
+        @NotBlank String roomType,
         ActiveStatus status
 ) {
+    public RoomRequest(String roomCode, String roomName, Integer capacity, ActiveStatus status) {
+        this(roomCode, roomName, capacity, null, "GENERAL", status);
+    }
 }

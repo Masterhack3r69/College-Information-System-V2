@@ -11,6 +11,8 @@ import com.school.sis.setup.entity.Department;
 import com.school.sis.setup.entity.Faculty;
 import com.school.sis.setup.repository.DepartmentRepository;
 import com.school.sis.setup.repository.FacultyRepository;
+import com.school.sis.schedule.repository.ClassScheduleRepository;
+import com.school.sis.common.exception.BusinessRuleException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,11 +25,14 @@ public class FacultyService {
     private final FacultyRepository facultyRepository;
     private final DepartmentRepository departmentRepository;
     private final AuditService auditService;
+    private final ClassScheduleRepository classScheduleRepository;
 
-    public FacultyService(FacultyRepository facultyRepository, DepartmentRepository departmentRepository, AuditService auditService) {
+    public FacultyService(FacultyRepository facultyRepository, DepartmentRepository departmentRepository,
+                          AuditService auditService, ClassScheduleRepository classScheduleRepository) {
         this.facultyRepository = facultyRepository;
         this.departmentRepository = departmentRepository;
         this.auditService = auditService;
+        this.classScheduleRepository = classScheduleRepository;
     }
 
     @Transactional(readOnly = true)
@@ -65,6 +70,9 @@ public class FacultyService {
     @Transactional
     public FacultyResponse updateStatus(UUID id, ActiveStatus status) {
         Faculty faculty = find(id);
+        if (status == ActiveStatus.INACTIVE && classScheduleRepository.existsActiveReference(id)) {
+            throw new BusinessRuleException("ACTIVE_SCHEDULE_REFERENCE", "Faculty is referenced by an active schedule");
+        }
         ActiveStatus before = faculty.getStatus();
         faculty.setStatus(status);
         FacultyResponse response = toResponse(faculty);

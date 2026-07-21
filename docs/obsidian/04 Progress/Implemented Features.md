@@ -12,7 +12,7 @@
 
 - [x] Department, program, course, faculty, room, school-year, semester, and section workflows
 - [x] Curriculum versioning, course links, prerequisites/corequisites, checklist, and activation
-- [x] Schedule meetings, filters, archive, and room/faculty/section conflict checking
+- [x] Draft activation/revision/cancel/archive scheduling lifecycle with meeting-level rooms/components/modes, scoped views, history, teaching loads, atomic term copy, and database-enforced resource conflicts
 - [x] Grading scale and weighted template configuration
 
 ## Student Records and Enrollment
@@ -46,11 +46,13 @@
 ## Reports and Tests
 
 - [x] PDF student, enrollment, assessment, receipt, class, grade-sheet, and grade-slip reports
-- [x] Backend unit/integration test suite: 75 passed in the latest run
+- [x] Backend unit/integration suite: 100 passed, including PostgreSQL migration/backfill and concurrent reservation tests
 - [x] Frontend TypeScript production build
+- [x] PostgreSQL V20→V22 scheduling backfill and competing-reservation transaction tests
 
 ## Related Notes
 
 - [[MVP Dashboard]]
 - [[MVP Completion Checklist]]
 - [[Known Issues]]
+- [[Scheduling]]

@@ -39,6 +39,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(exception.getCode(), exception.getMessage()));
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConflict(ConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.failure(exception.getCode(), exception.getMessage()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException exception) {
         return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_ARGUMENT", exception.getMessage()));
@@ -70,6 +76,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException exception) {
+        String detail = exception.getMostSpecificCause() == null ? "" : exception.getMostSpecificCause().getMessage();
+        if (detail != null && detail.contains("ex_schedule_resource_reservation")) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.failure("SCHEDULE_CONFLICT", "Another schedule reserved this room, faculty member, or section. Refresh and review the conflict."));
+        }
+        if (detail != null && detail.contains("ux_schedule_offering_open")) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.failure("DUPLICATE_SCHEDULE", "A draft or active offering already exists for this section and course."));
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.failure("A database integrity constraint was violated. This usually means a duplicate record exists or a required related record is missing."));
     }

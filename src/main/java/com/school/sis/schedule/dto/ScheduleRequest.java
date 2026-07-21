@@ -13,9 +13,14 @@ public record ScheduleRequest(
         @NotNull UUID sectionId,
         @NotNull UUID courseId,
         @NotNull UUID facultyId,
-        @NotNull UUID roomId,
+        UUID roomId,
         @NotNull @Positive Integer capacity,
         @NotNull ScheduleStatus status,
-        @NotNull @Size(min = 1) List<@Valid ScheduleMeetingRequest> meetings
+        @NotNull @Size(min = 1) List<@Valid ScheduleMeetingRequest> meetings,
+        Long expectedVersion
 ) {
+    public ScheduleRequest(UUID sectionId, UUID courseId, UUID facultyId, UUID roomId, Integer capacity,
+                           ScheduleStatus status, List<ScheduleMeetingRequest> meetings) {
+        this(sectionId, courseId, facultyId, roomId, capacity, status, meetings, null);
+    }
 }

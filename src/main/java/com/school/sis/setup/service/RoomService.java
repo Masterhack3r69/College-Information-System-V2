@@ -9,6 +9,8 @@ import com.school.sis.setup.dto.RoomResponse;
 import com.school.sis.setup.entity.ActiveStatus;
 import com.school.sis.setup.entity.Room;
 import com.school.sis.setup.repository.RoomRepository;
+import com.school.sis.schedule.repository.ClassScheduleRepository;
+import com.school.sis.common.exception.BusinessRuleException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +22,13 @@ public class RoomService {
 
     private final RoomRepository roomRepository;
     private final AuditService auditService;
+    private final ClassScheduleRepository classScheduleRepository;
 
-    public RoomService(RoomRepository roomRepository, AuditService auditService) {
+    public RoomService(RoomRepository roomRepository, AuditService auditService,
+                       ClassScheduleRepository classScheduleRepository) {
         this.roomRepository = roomRepository;
         this.auditService = auditService;
+        this.classScheduleRepository = classScheduleRepository;
     }
 
     @Transactional(readOnly = true)
@@ -57,6 +62,9 @@ public class RoomService {
     @Transactional
     public RoomResponse updateStatus(UUID id, ActiveStatus status) {
         Room room = find(id);
+        if (status == ActiveStatus.INACTIVE && classScheduleRepository.existsActiveReference(id)) {
+            throw new BusinessRuleException("ACTIVE_SCHEDULE_REFERENCE", "Room is referenced by an active schedule");
+        }
         ActiveStatus before = room.getStatus();
         room.setStatus(status);
         RoomResponse response = toResponse(room); auditService.log("ROOM_STATUS_UPDATED", AuditModule.ACADEMIC_SETUP, "Room", id, java.util.Map.of("status", before), java.util.Map.of("status", status)); return response;
@@ -71,10 +79,16 @@ public class RoomService {
         room.setRoomCode(request.roomCode());
         room.setRoomName(request.roomName());
         room.setCapacity(request.capacity());
+        room.setBuilding(request.building());
+        if (request.roomType() == null || request.roomType().isBlank()) {
+            throw new BusinessRuleException("ROOM_PROFILE_INCOMPLETE", "Room type is required");
+        }
+        room.setRoomType(request.roomType().trim().toUpperCase(java.util.Locale.ROOT));
         room.setStatus(request.status() == null ? ActiveStatus.ACTIVE : request.status());
     }
 
     private RoomResponse toResponse(Room room) {
-        return new RoomResponse(room.getId(), room.getRoomCode(), room.getRoomName(), room.getCapacity(), room.getStatus());
+        return new RoomResponse(room.getId(), room.getRoomCode(), room.getRoomName(), room.getCapacity(),
+                room.getBuilding(), room.getRoomType(), room.getStatus());
     }
 }

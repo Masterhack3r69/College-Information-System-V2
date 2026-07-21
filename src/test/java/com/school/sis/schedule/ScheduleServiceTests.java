@@ -6,6 +6,16 @@ import com.school.sis.schedule.dto.ScheduleConflictResponse;
 import com.school.sis.schedule.dto.ScheduleMeetingRequest;
 import com.school.sis.schedule.dto.ScheduleRequest;
 import com.school.sis.schedule.dto.ScheduleResponse;
+import com.school.sis.schedule.dto.ScheduleLifecycleRequest;
+import com.school.sis.schedule.dto.ScheduleRevisionRequest;
+import com.school.sis.schedule.dto.ScheduleCopyTermRequest;
+import com.school.sis.schedule.entity.ScheduleComponentType;
+import com.school.sis.schedule.entity.ScheduleDeliveryMode;
+import com.school.sis.schedule.entity.ScheduleLoadPolicy;
+import com.school.sis.schedule.entity.ScheduleMeeting;
+import com.school.sis.schedule.repository.ScheduleLoadPolicyRepository;
+import com.school.sis.schedule.repository.ScheduleMeetingRepository;
+import com.school.sis.setup.service.RoomService;
 import com.school.sis.schedule.entity.ScheduleStatus;
 import com.school.sis.schedule.service.ScheduleService;
 import com.school.sis.setup.entity.ActiveStatus;
@@ -41,6 +51,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -50,6 +62,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 
 @ActiveProfiles("test")
 @SpringBootTest
@@ -67,6 +82,9 @@ class ScheduleServiceTests {
     private final SectionRepository sectionRepository;
     private final CurriculumRepository curriculumRepository;
     private final CurriculumCourseRepository curriculumCourseRepository;
+    private final ScheduleLoadPolicyRepository loadPolicyRepository;
+    private final ScheduleMeetingRepository scheduleMeetingRepository;
+    private final RoomService roomService;
 
     private Section section;
     private Section otherSection;
@@ -91,7 +109,10 @@ class ScheduleServiceTests {
             SemesterRepository semesterRepository,
             SectionRepository sectionRepository,
             CurriculumRepository curriculumRepository,
-            CurriculumCourseRepository curriculumCourseRepository
+            CurriculumCourseRepository curriculumCourseRepository,
+            ScheduleLoadPolicyRepository loadPolicyRepository,
+            ScheduleMeetingRepository scheduleMeetingRepository,
+            RoomService roomService
     ) {
         this.scheduleService = scheduleService;
         this.departmentRepository = departmentRepository;
@@ -104,6 +125,9 @@ class ScheduleServiceTests {
         this.sectionRepository = sectionRepository;
         this.curriculumRepository = curriculumRepository;
         this.curriculumCourseRepository = curriculumCourseRepository;
+        this.loadPolicyRepository = loadPolicyRepository;
+        this.scheduleMeetingRepository = scheduleMeetingRepository;
+        this.roomService = roomService;
     }
 
     @BeforeEach
@@ -176,11 +200,11 @@ class ScheduleServiceTests {
 
     @Test
     void checkConflictReportsRoomFacultyAndSectionOverlaps() {
-        ScheduleResponse existing = scheduleService.create(request(
+        ScheduleResponse existing = activate(request(
                 section.getId(),
                 faculty.getId(),
                 room.getId(),
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 meeting(DayOfWeek.MONDAY, "09:00", "10:30")
         ));
 
@@ -204,40 +228,41 @@ class ScheduleServiceTests {
 
     @Test
     void activeScheduleRejectsOverlappingRoomConflict() {
-        scheduleService.create(request(
+        activate(request(
                 section.getId(),
                 faculty.getId(),
                 room.getId(),
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 meeting(DayOfWeek.TUESDAY, "09:00", "10:00")
         ));
 
-        assertThatThrownBy(() -> scheduleService.create(request(
+        ScheduleResponse conflictingDraft = scheduleService.create(request(
                 otherSection.getId(),
                 otherFaculty.getId(),
                 room.getId(),
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 meeting(DayOfWeek.TUESDAY, "09:30", "10:30")
-        )))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessage("Schedule has conflicts");
+        ));
+        assertThatThrownBy(() -> scheduleService.activate(conflictingDraft.id(),
+                new ScheduleLifecycleRequest(conflictingDraft.version(), null, false, List.of()), null))
+                .hasMessageContaining("ROOM conflict");
     }
 
     @Test
     void backToBackMeetingsAreAllowed() {
-        scheduleService.create(request(
+        activate(request(
                 section.getId(),
                 faculty.getId(),
                 room.getId(),
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 meeting(DayOfWeek.WEDNESDAY, "09:00", "10:00")
         ));
 
-        ScheduleResponse response = scheduleService.create(request(
+        ScheduleResponse response = activate(request(
                 otherSection.getId(),
                 otherFaculty.getId(),
                 room.getId(),
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 meeting(DayOfWeek.WEDNESDAY, "10:00", "11:00")
         ));
 
@@ -245,12 +270,12 @@ class ScheduleServiceTests {
     }
 
     @Test
-    void updateIgnoresCurrentScheduleDuringConflictCheck() {
+    void draftUpdatePreservesScheduleIdentity() {
         ScheduleResponse existing = scheduleService.create(request(
                 section.getId(),
                 faculty.getId(),
                 room.getId(),
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 meeting(DayOfWeek.THURSDAY, "13:00", "14:30")
         ));
 
@@ -258,11 +283,12 @@ class ScheduleServiceTests {
                 section.getId(),
                 faculty.getId(),
                 room.getId(),
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 meeting(DayOfWeek.THURSDAY, "13:00", "14:30")
         ));
 
         assertThat(updated.id()).isEqualTo(existing.id());
+        assertThat(updated.status()).isEqualTo(ScheduleStatus.DRAFT);
     }
 
     @Test
@@ -271,11 +297,169 @@ class ScheduleServiceTests {
                 section.getId(),
                 faculty.getId(),
                 room.getId(),
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 meeting(DayOfWeek.FRIDAY, "15:00", "15:00")
         )))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessage("Meeting end time must be after start time");
+    }
+
+    @Test
+    void createRejectsNonDraftStatus() {
+        assertThatThrownBy(() -> scheduleService.create(request(section.getId(), faculty.getId(), room.getId(),
+                ScheduleStatus.ACTIVE, meeting(DayOfWeek.MONDAY, "08:00", "09:00"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("lifecycle endpoints");
+    }
+
+    @Test
+    void activationRejectsStaleVersionAndSectionCapacityOverflow() {
+        ScheduleResponse draft = scheduleService.create(request(section.getId(), faculty.getId(), room.getId(),
+                ScheduleStatus.DRAFT, meeting(DayOfWeek.SUNDAY, "08:00", "09:00")));
+        assertThatThrownBy(() -> scheduleService.activate(draft.id(),
+                new ScheduleLifecycleRequest(draft.version() + 1, null, false, List.of()), null))
+                .hasMessageContaining("changed");
+
+        section.setMaximumCapacity(20);
+        sectionRepository.save(section);
+        assertThatThrownBy(() -> scheduleService.activate(draft.id(),
+                new ScheduleLifecycleRequest(draft.version(), null, false, List.of()), null))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("section maximum capacity");
+    }
+
+    @Test
+    void onlineSundayMeetingNeedsNoRoomAndClearsLegacyRoom() {
+        ScheduleMeetingRequest online = new ScheduleMeetingRequest(DayOfWeek.SUNDAY, LocalTime.parse("18:00"),
+                LocalTime.parse("19:00"), ScheduleComponentType.LECTURE, ScheduleDeliveryMode.ONLINE, null, "LMS Room 1");
+        ScheduleResponse draft = scheduleService.create(new ScheduleRequest(section.getId(), course.getId(), faculty.getId(),
+                null, 40, ScheduleStatus.DRAFT, List.of(online)));
+        ScheduleResponse active = scheduleService.activate(draft.id(),
+                new ScheduleLifecycleRequest(draft.version(), null, false, List.of()), null);
+
+        assertThat(active.roomId()).isNull();
+        assertThat(active.meetings().getFirst().dayOfWeek()).isEqualTo(DayOfWeek.SUNDAY);
+        assertThat(active.meetings().getFirst().deliveryMode()).isEqualTo(ScheduleDeliveryMode.ONLINE);
+    }
+
+    @Test
+    void intraRequestOverlapAndDuplicateOfferingAreRejected() {
+        ScheduleMeetingRequest first = meeting(DayOfWeek.MONDAY, "08:00", "10:00");
+        ScheduleMeetingRequest second = meeting(DayOfWeek.MONDAY, "09:00", "11:00");
+        assertThatThrownBy(() -> scheduleService.create(new ScheduleRequest(section.getId(), course.getId(), faculty.getId(),
+                room.getId(), 40, ScheduleStatus.DRAFT, List.of(first, second))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("cannot overlap");
+
+        scheduleService.create(request(section.getId(), faculty.getId(), room.getId(), ScheduleStatus.DRAFT,
+                meeting(DayOfWeek.MONDAY, "08:00", "09:00")));
+        assertThatThrownBy(() -> scheduleService.create(request(section.getId(), faculty.getId(), otherRoom.getId(),
+                ScheduleStatus.DRAFT, meeting(DayOfWeek.TUESDAY, "08:00", "09:00"))))
+                .hasMessageContaining("offering already exists");
+    }
+
+    @Test
+    void activeRevisionRetiresOldMeetingsAndRecordsReason() {
+        ScheduleResponse active = activate(request(section.getId(), faculty.getId(), room.getId(), ScheduleStatus.DRAFT,
+                meeting(DayOfWeek.WEDNESDAY, "08:00", "09:00")));
+        ScheduleRevisionRequest revision = new ScheduleRevisionRequest(active.version(), "Move to laboratory",
+                faculty.getId(), 40, List.of(new ScheduleMeetingRequest(DayOfWeek.THURSDAY, LocalTime.parse("10:00"),
+                LocalTime.parse("12:00"), ScheduleComponentType.LABORATORY, ScheduleDeliveryMode.ONSITE,
+                otherRoom.getId(), null)), false, List.of());
+
+        ScheduleResponse revised = scheduleService.revise(active.id(), revision, null);
+        List<ScheduleMeeting> stored = scheduleMeetingRepository.findAll().stream()
+                .filter(item -> item.getClassSchedule().getId().equals(active.id())).toList();
+
+        assertThat(revised.id()).isEqualTo(active.id());
+        assertThat(revised.version()).isGreaterThan(active.version());
+        assertThat(revised.meetings()).hasSize(1);
+        assertThat(revised.meetings().getFirst().revisionNumber()).isEqualTo(2);
+        assertThat(stored).hasSize(2);
+        assertThat(stored).filteredOn(item -> !item.isActive()).hasSize(1);
+        assertThat(scheduleService.history(active.id(), null)).extracting("reason").contains("Move to laboratory");
+        assertThatThrownBy(() -> scheduleService.revise(active.id(), revision, null))
+                .hasMessageContaining("changed");
+    }
+
+    @Test
+    void overloadWarningRequiresAcknowledgementAndReason() {
+        ScheduleLoadPolicy policy = new ScheduleLoadPolicy();
+        policy.setSchoolYear(schoolYear);
+        policy.setSemester(semester);
+        policy.setMaximumWeeklyContactHours(new BigDecimal("0.50"));
+        policy.setActive(true);
+        loadPolicyRepository.save(policy);
+        ScheduleResponse draft = scheduleService.create(request(section.getId(), faculty.getId(), room.getId(),
+                ScheduleStatus.DRAFT, meeting(DayOfWeek.FRIDAY, "08:00", "09:00")));
+
+        assertThat(draft.warnings()).extracting("code").contains("FACULTY_LOAD_WARNING");
+        assertThatThrownBy(() -> scheduleService.activate(draft.id(),
+                new ScheduleLifecycleRequest(draft.version(), null, false, List.of()), null))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("must be acknowledged");
+
+        ScheduleResponse active = scheduleService.activate(draft.id(),
+                new ScheduleLifecycleRequest(draft.version(), "Registrar-approved overload", true,
+                        List.of("FACULTY_LOAD_WARNING")), null);
+        assertThat(active.status()).isEqualTo(ScheduleStatus.ACTIVE);
+        assertThat(scheduleService.history(active.id(), null).getFirst().acknowledgedWarnings())
+                .contains("FACULTY_LOAD_WARNING");
+    }
+
+    @Test
+    void facultyReadScopeReturnsOnlyAssignedSchedules() {
+        activate(request(section.getId(), faculty.getId(), room.getId(), ScheduleStatus.DRAFT,
+                meeting(DayOfWeek.MONDAY, "08:00", "09:00")));
+        activate(request(otherSection.getId(), otherFaculty.getId(), otherRoom.getId(), ScheduleStatus.DRAFT,
+                meeting(DayOfWeek.TUESDAY, "08:00", "09:00")));
+        com.school.sis.auth.security.SisUserDetails principal = mock(com.school.sis.auth.security.SisUserDetails.class);
+        when(principal.facultyId()).thenReturn(faculty.getId());
+        doReturn(List.of(new SimpleGrantedAuthority("ROLE_FACULTY"))).when(principal).getAuthorities();
+
+        var result = scheduleService.list(null, PageRequest.of(0, 20), principal);
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().getFirst().facultyId()).isEqualTo(faculty.getId());
+    }
+
+    @Test
+    void activeRoomCannotBeDeactivated() {
+        activate(request(section.getId(), faculty.getId(), room.getId(), ScheduleStatus.DRAFT,
+                meeting(DayOfWeek.MONDAY, "08:00", "09:00")));
+
+        assertThatThrownBy(() -> roomService.updateStatus(room.getId(), ActiveStatus.INACTIVE))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("active schedule");
+    }
+
+    @Test
+    void termCopyPreviewsAndCreatesAllSelectedDrafts() {
+        ScheduleResponse source = activate(request(section.getId(), faculty.getId(), room.getId(), ScheduleStatus.DRAFT,
+                meeting(DayOfWeek.SATURDAY, "08:00", "10:00")));
+        SchoolYear targetYear = new SchoolYear();
+        targetYear.setSchoolYear("2027-" + UUID.randomUUID().toString().substring(0, 6));
+        targetYear.setActive(false);
+        targetYear = schoolYearRepository.save(targetYear);
+        Section target = new Section();
+        target.setSectionCode(section.getSectionCode());
+        target.setProgram(section.getProgram());
+        target.setCurriculum(curriculum);
+        target.setSchoolYear(targetYear);
+        target.setSemester(semester);
+        target.setYearLevel(1);
+        target.setMaximumCapacity(40);
+        target.setStatus(ActiveStatus.ACTIVE);
+        sectionRepository.save(target);
+        ScheduleCopyTermRequest copyRequest = new ScheduleCopyTermRequest(schoolYear.getId(), semester.getId(),
+                targetYear.getId(), semester.getId(), List.of(source.id()));
+
+        assertThat(scheduleService.previewCopy(copyRequest).executable()).isTrue();
+        var result = scheduleService.copyTerm(copyRequest);
+
+        assertThat(result.createdCount()).isEqualTo(1);
+        assertThat(scheduleService.get(result.createdScheduleIds().getFirst()).status()).isEqualTo(ScheduleStatus.DRAFT);
+        assertThat(scheduleService.previewCopy(copyRequest).executable()).isFalse();
     }
 
     private ScheduleRequest request(UUID sectionId, UUID facultyId, UUID roomId, ScheduleStatus status, ScheduleMeetingRequest meeting) {
@@ -292,6 +476,12 @@ class ScheduleServiceTests {
 
     private ScheduleMeetingRequest meeting(DayOfWeek dayOfWeek, String startTime, String endTime) {
         return new ScheduleMeetingRequest(dayOfWeek, LocalTime.parse(startTime), LocalTime.parse(endTime));
+    }
+
+    private ScheduleResponse activate(ScheduleRequest request) {
+        ScheduleResponse draft = scheduleService.create(request);
+        return scheduleService.activate(draft.id(),
+                new ScheduleLifecycleRequest(draft.version(), null, false, List.of()), null);
     }
 
     private Faculty faculty(String employeeNumber, String firstName, String lastName, Department department) {
@@ -312,6 +502,7 @@ class ScheduleServiceTests {
         room.setRoomCode(roomCode);
         room.setRoomName(roomCode + " Room");
         room.setCapacity(40);
+        room.setRoomType("GENERAL");
         room.setStatus(ActiveStatus.ACTIVE);
         return roomRepository.save(room);
     }
@@ -324,6 +515,7 @@ class ScheduleServiceTests {
         section.setSchoolYear(schoolYear);
         section.setSemester(semester);
         section.setYearLevel(1);
+        section.setMaximumCapacity(40);
         section.setStatus(ActiveStatus.ACTIVE);
         return sectionRepository.save(section);
     }

@@ -19,6 +19,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,8 +43,8 @@ public class ClassSchedule extends AuditableEntity {
     @JoinColumn(name = "faculty_id", nullable = false)
     private Faculty faculty;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "room_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_id")
     private Room room;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -59,6 +60,10 @@ public class ClassSchedule extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ScheduleStatus status = ScheduleStatus.DRAFT;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     @OneToMany(mappedBy = "classSchedule", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ScheduleMeeting> meetings = new ArrayList<>();
@@ -85,6 +90,8 @@ public class ClassSchedule extends AuditableEntity {
     public void setCapacity(Integer capacity) { this.capacity = capacity; }
     public ScheduleStatus getStatus() { return status; }
     public void setStatus(ScheduleStatus status) { this.status = status; }
+    public long getVersion() { return version; }
+    public void touch() { touchForVersioning(); }
     public List<ScheduleMeeting> getMeetings() { return meetings; }
     public void setMeetings(List<ScheduleMeeting> meetings) {
         this.meetings.clear();

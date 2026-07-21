@@ -14,6 +14,11 @@ public record SectionRequest(
         @NotNull UUID schoolYearId,
         @NotNull UUID semesterId,
         @Min(1) int yearLevel,
+        @Min(1) Integer maximumCapacity,
         ActiveStatus status
 ) {
+    public SectionRequest(String sectionCode, UUID programId, UUID curriculumId, UUID schoolYearId,
+                          UUID semesterId, int yearLevel, ActiveStatus status) {
+        this(sectionCode, programId, curriculumId, schoolYearId, semesterId, yearLevel, null, status);
+    }
 }

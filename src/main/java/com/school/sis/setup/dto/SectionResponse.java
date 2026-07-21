@@ -16,6 +16,8 @@ public record SectionResponse(
         UUID semesterId,
         String semesterName,
         int yearLevel,
+        Integer maximumCapacity,
+        long confirmedCount,
         ActiveStatus status
 ) {
 }

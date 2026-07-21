@@ -1,5 +1,21 @@
 # Known Issues
 
+## Scheduling Live-Stack Cross-Role Browser Coverage Is Limited
+
+- Severity: Medium
+- Module: Scheduling / Testing
+- Current behavior: The focused Playwright suite covers Registrar revision/copy, Dean read-only scope, Faculty/Student change views, Sunday, and mobile overflow with deterministic API fixtures. PostgreSQL and authenticated live-stack smoke gates run separately.
+- Expected behavior: Add a seeded full-stack Playwright run across separate persisted accounts so UI role assertions and backend scoping are proven in one execution.
+- Status: Integration-depth improvement; see [[Scheduling Test Cases]].
+
+## Legacy Top-Level Schedule Room Is Transitional
+
+- Severity: Low
+- Module: Scheduling / API
+- Current behavior: `class_schedules.room_id` and top-level room response fields remain for one compatibility release and are populated only for a uniform active meeting room.
+- Expected behavior: Remove legacy request/response usage after consumers use meeting-level rooms exclusively.
+- Status: Planned compatibility cleanup; see [[Scheduling]].
+
 ## Seeded Finance Rates Require Institutional Approval
 
 - Severity: High before production
@@ -103,3 +119,4 @@
 - [[In Progress]]
 - [[Finance Modernization]]
 - [[Development Setup]]
+- [[Scheduling]]

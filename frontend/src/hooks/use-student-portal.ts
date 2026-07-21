@@ -70,12 +70,17 @@ export type StudentSchedule = {
   courseCode: string
   courseTitle: string
   sectionCode: string
-  roomCode: string
+  roomCode?: string
+  componentType?: string
+  deliveryMode?: string
+  locationDetails?: string
   dayOfWeek: string
   startTime: string
   endTime: string
   faculty: string
 }
+export type StudentScheduleTerm = { schoolYearId:string; schoolYear:string; semesterId:string; semesterName:string; active:boolean }
+export type StudentScheduleChange = { id:string; action:string; reason?:string; changedAt:string; actorName?:string; courseCode:string; sectionCode:string }
 export type StudentGrade = {
   id: string
   courseCode: string
@@ -236,11 +241,13 @@ export const useAvailableClasses = () =>
     queryKey: ["student-available-classes"],
     queryFn: () => api<AvailableClass[]>("/student/me/available-classes"),
   })
-export const useStudentSchedule = () =>
+export const useStudentSchedule = (schoolYearId?:string, semesterId?:string) =>
   useQuery({
-    queryKey: ["student-schedule"],
-    queryFn: () => api<StudentSchedule[]>("/student/me/schedule"),
+    queryKey: ["student-schedule", schoolYearId, semesterId],
+    queryFn: () => api<StudentSchedule[]>(`/student/me/schedule${schoolYearId&&semesterId?`?schoolYearId=${schoolYearId}&semesterId=${semesterId}`:""}`),
   })
+export const useStudentScheduleTerms = () => useQuery({ queryKey:["student-schedule-terms"], queryFn:()=>api<StudentScheduleTerm[]>("/student/me/schedule/terms") })
+export const useStudentScheduleChanges = (schoolYearId?:string,semesterId?:string) => useQuery({ queryKey:["student-schedule-changes",schoolYearId,semesterId], queryFn:()=>api<StudentScheduleChange[]>(`/student/me/schedule/changes?schoolYearId=${schoolYearId}&semesterId=${semesterId}`), enabled:!!schoolYearId&&!!semesterId })
 export const useStudentGrades = () =>
   useQuery({
     queryKey: ["student-grades"],

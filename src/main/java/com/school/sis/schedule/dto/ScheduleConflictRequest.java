@@ -11,7 +11,7 @@ public record ScheduleConflictRequest(
         UUID ignoreScheduleId,
         @NotNull UUID sectionId,
         @NotNull UUID facultyId,
-        @NotNull UUID roomId,
+        UUID roomId,
         @NotNull UUID schoolYearId,
         @NotNull UUID semesterId,
         @NotNull @Size(min = 1) List<@Valid ScheduleMeetingRequest> meetings

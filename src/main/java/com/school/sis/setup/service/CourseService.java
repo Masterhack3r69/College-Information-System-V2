@@ -10,6 +10,7 @@ import com.school.sis.setup.dto.CourseResponse;
 import com.school.sis.setup.entity.ActiveStatus;
 import com.school.sis.setup.entity.Course;
 import com.school.sis.setup.repository.CourseRepository;
+import com.school.sis.schedule.repository.ClassScheduleRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +23,14 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final DepartmentService departmentService;
     private final AuditService auditService;
+    private final ClassScheduleRepository classScheduleRepository;
 
-    public CourseService(CourseRepository courseRepository, DepartmentService departmentService, AuditService auditService) {
+    public CourseService(CourseRepository courseRepository, DepartmentService departmentService,
+                         AuditService auditService, ClassScheduleRepository classScheduleRepository) {
         this.courseRepository = courseRepository;
         this.departmentService = departmentService;
         this.auditService = auditService;
+        this.classScheduleRepository = classScheduleRepository;
     }
 
     @Transactional(readOnly = true)
@@ -73,6 +77,10 @@ public class CourseService {
     }
 
     private void apply(Course course, CourseRequest request) {
+        if (course.getId() != null && request.status() == ActiveStatus.INACTIVE
+                && classScheduleRepository.existsActiveReference(course.getId())) {
+            throw new BusinessRuleException("ACTIVE_SCHEDULE_REFERENCE", "Course is referenced by an active schedule");
+        }
         course.setCourseCode(request.courseCode());
         course.setCourseTitle(request.courseTitle());
         course.setCourseDescription(request.courseDescription());

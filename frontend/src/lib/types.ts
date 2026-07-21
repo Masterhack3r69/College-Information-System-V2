@@ -525,6 +525,14 @@ export type Meeting = {
   dayOfWeek: string
   startTime: string
   endTime: string
+  componentType?: "LECTURE" | "LABORATORY" | "COMBINED"
+  deliveryMode?: "ONSITE" | "ONLINE" | "HYBRID"
+  roomId?: string
+  roomCode?: string
+  roomName?: string
+  locationDetails?: string
+  revisionNumber?: number
+  active?: boolean
 }
 export type Schedule = {
   id: string
@@ -541,8 +549,8 @@ export type Schedule = {
   creditUnits: number
   facultyId: string
   facultyName: string
-  roomId: string
-  roomCode: string
+  roomId?: string
+  roomCode?: string
   schoolYearId: string
   schoolYear: string
   semesterId: string
@@ -551,17 +559,31 @@ export type Schedule = {
   enrolledCount: number
   availableSeats: number
   status: string
+  version: number
+  hasEnrollmentActivity: boolean
+  gradebookSubmitted: boolean
+  gradebookLocked: boolean
+  identityLocked: boolean
+  roomSummary: string
+  warnings: { code: string; message: string; requiresOverride: boolean }[]
+  latestChange?: { id: string; action: string; reason?: string; actorName?: string; changedAt: string }
   meetings: Meeting[]
 }
 export type ScheduleRequest = {
   sectionId: string
   courseId: string
   facultyId: string
-  roomId: string
+  roomId?: string
   capacity: number
   status: "DRAFT" | "ACTIVE" | "CANCELLED" | "ARCHIVED"
   meetings: Meeting[]
+  expectedVersion?: number
 }
+export type ScheduleHistory = { id:string; scheduleId:string; action:string; reason?:string; actorName?:string; changedAt:string; acknowledgedWarnings:string[] }
+export type FacultyLoad = { facultyId:string; facultyName:string; facultyType:string; activeClasses:number; confirmedStudents:number; weeklyContactHours:number; maximumWeeklyContactHours?:number; maximumActiveClasses?:number; remainingHours?:number; overloaded:boolean; policyConfigured:boolean }
+export type RoomAvailability = { roomId:string; roomCode:string; roomName:string; capacity?:number; building?:string; roomType?:string; dayOfWeek?:string; occupiedPeriods:{scheduleId:string;startTime:string;endTime:string;courseCode:string;sectionCode:string}[] }
+export type ScheduleLoadPolicy = { id:string; schoolYearId:string; schoolYear:string; semesterId:string; semesterName:string; facultyType?:FacultyType; maximumWeeklyContactHours:number; maximumActiveClasses?:number; active:boolean }
+export type ScheduleCopyPreview = { executable:boolean; globalIssues:string[]; items:{sourceScheduleId:string;targetSectionId?:string;courseCode?:string;sourceSectionCode?:string;targetSectionCode?:string;copyable:boolean;issues:string[]}[] }
 export type ScheduleConflict = {
   conflictType: string
   scheduleId: string
@@ -715,6 +737,8 @@ export interface Room {
   roomCode: string
   roomName: string
   capacity?: number
+  building?: string
+  roomType?: string
   status: ActiveStatus
 }
 
@@ -730,6 +754,8 @@ export interface Section {
   semesterId: string
   semesterName: string
   yearLevel: number
+  maximumCapacity?: number
+  confirmedCount?: number
   status: ActiveStatus
 }
 

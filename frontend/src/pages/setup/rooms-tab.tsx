@@ -37,6 +37,8 @@ import { cn } from "@/lib/utils"
 const roomSchema = z.object({
   roomCode: z.string().min(1, "Room code is required").trim(),
   roomName: z.string().min(1, "Room name is required").trim(),
+  building: z.string().trim().optional(),
+  roomType: z.string().min(1, "Room type is required").trim(),
   capacity: z.preprocess(
     (val) => (val === "" || val === undefined || val === null ? undefined : val),
     z.coerce.number().int("Capacity must be an integer").min(0, "Capacity must be greater than or equal to 0").optional()
@@ -69,6 +71,8 @@ export function RoomsTab() {
     defaultValues: {
       roomCode: "",
       roomName: "",
+      building: "",
+      roomType: "GENERAL",
       capacity: undefined,
     },
   })
@@ -78,6 +82,8 @@ export function RoomsTab() {
     reset({
       roomCode: "",
       roomName: "",
+      building: "",
+      roomType: "GENERAL",
       capacity: "" as any, // set to empty string for UI
     })
     setIsOpen(true)
@@ -88,6 +94,8 @@ export function RoomsTab() {
     reset({
       roomCode: item.roomCode,
       roomName: item.roomName,
+      building: item.building ?? "",
+      roomType: item.roomType ?? "GENERAL",
       capacity: item.capacity ?? ("" as any),
     })
     setIsOpen(true)
@@ -170,6 +178,7 @@ export function RoomsTab() {
             <TableRow>
               <TableHead>Room Code</TableHead>
               <TableHead>Room Name</TableHead>
+              <TableHead>Building / Type</TableHead>
               <TableHead>Capacity</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[100px] text-right">Actions</TableHead>
@@ -178,7 +187,7 @@ export function RoomsTab() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading rooms...
                   </div>
@@ -186,7 +195,7 @@ export function RoomsTab() {
               </TableRow>
             ) : !data?.items.length ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                   No rooms found.
                 </TableCell>
               </TableRow>
@@ -195,6 +204,7 @@ export function RoomsTab() {
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.roomCode}</TableCell>
                   <TableCell>{item.roomName}</TableCell>
+                  <TableCell>{item.building || "—"} · {item.roomType || <span className="text-amber-600">Needs setup</span>}</TableCell>
                   <TableCell>{item.capacity ?? "—"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -308,6 +318,18 @@ export function RoomsTab() {
               {errors.capacity && (
                 <p className="text-xs text-destructive">{errors.capacity.message}</p>
               )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="building">Building (Optional)</Label>
+                <Input id="building" placeholder="e.g. Science Building" {...register("building")}/>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="roomType">Room Type</Label>
+                <Input id="roomType" placeholder="e.g. LABORATORY" {...register("roomType")} className={cn(errors.roomType && "border-destructive focus-visible:ring-destructive")}/>
+                {errors.roomType && <p className="text-xs text-destructive">{errors.roomType.message}</p>}
+              </div>
             </div>
 
             <DialogFooter className="pt-4">

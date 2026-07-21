@@ -27,6 +27,7 @@ import com.school.sis.grade.repository.GradingScaleRepository;
 import com.school.sis.grade.repository.GradingTemplateRepository;
 import com.school.sis.schedule.dto.ScheduleMeetingRequest;
 import com.school.sis.schedule.dto.ScheduleRequest;
+import com.school.sis.schedule.dto.ScheduleLifecycleRequest;
 import com.school.sis.schedule.dto.ScheduleResponse;
 import com.school.sis.schedule.entity.ScheduleStatus;
 import com.school.sis.schedule.service.ScheduleService;
@@ -297,7 +298,17 @@ class GradeServiceTests {
 
     @Test
     void lockedPassingGradeSatisfiesPrerequisiteAndFailedGradeDoesNot() {
-        ScheduleResponse prerequisiteSchedule = confirmedPrerequisiteForStudent(student, "2.00", DayOfWeek.WEDNESDAY, "13:00", "14:00");
+        Student failingStudent = student("GRD-SF-" + UUID.randomUUID().toString().substring(0, 6), "Failing");
+        ScheduleResponse prerequisiteSchedule = schedule(prerequisiteCourse, section, roomOne, DayOfWeek.WEDNESDAY, "13:00", "14:00");
+        confirmStudentInSchedule(student, schoolYear, semester, section, prerequisiteSchedule);
+        confirmStudentInSchedule(failingStudent, schoolYear, semester, section, prerequisiteSchedule);
+        GradeClassResponse prerequisiteGrades = gradeService.classGrades(prerequisiteSchedule.id(), facultyUser(faculty));
+        gradeService.encode(prerequisiteSchedule.id(), new GradeEncodeRequest(prerequisiteGrades.grades().stream()
+                .map(grade -> new GradeEntryRequest(grade.enrollmentSubjectId(),
+                        grade.studentId().equals(failingStudent.getId()) ? new BigDecimal("5.00") : new BigDecimal("2.00"), null))
+                .toList()), facultyUser(faculty));
+        gradeService.submit(prerequisiteSchedule.id(), facultyUser(faculty));
+        gradeService.approve(prerequisiteSchedule.id(), approverUser());
         gradeService.lock(prerequisiteSchedule.id(), approverUser());
         EnrollmentResponse advancedEnrollment = enrollment(student, nextSchoolYear, nextSemester, nextSection);
         ScheduleResponse advancedSchedule = schedule(advancedCourse, nextSection, roomTwo, DayOfWeek.TUESDAY, "10:00", "11:00");
@@ -307,9 +318,6 @@ class GradeServiceTests {
 
         assertThat(valid.valid()).isTrue();
 
-        Student failingStudent = student("GRD-SF-" + UUID.randomUUID().toString().substring(0, 6), "Failing");
-        ScheduleResponse failingPrerequisiteSchedule = confirmedPrerequisiteForStudent(failingStudent, "5.00", DayOfWeek.THURSDAY, "13:00", "14:00");
-        gradeService.lock(failingPrerequisiteSchedule.id(), approverUser());
         EnrollmentResponse blockedEnrollment = enrollment(failingStudent, nextSchoolYear, nextSemester, nextSection);
         enrollmentService.addSubject(blockedEnrollment.id(), new EnrollmentSubjectRequest(advancedSchedule.id()));
 
@@ -343,7 +351,17 @@ class GradeServiceTests {
         book = gradebookService.saveItem(schedule.id(), new GradebookRequests.Item(null, book.categories().get(0).id(), "Midterm Exam", new BigDecimal("100"), null, 0), facultyUser(faculty));
         book = gradebookService.saveItem(schedule.id(), new GradebookRequests.Item(null, book.categories().get(1).id(), "Final Exam", new BigDecimal("100"), null, 1), facultyUser(faculty));
 
-        ScheduleResponse otherSchedule = schedule(prerequisiteCourse, section, roomTwo, DayOfWeek.FRIDAY, "15:00", "16:00");
+        Section otherSection = new Section();
+        otherSection.setSectionCode("GRD-OTHER-" + UUID.randomUUID().toString().substring(0, 6));
+        otherSection.setProgram(section.getProgram());
+        otherSection.setCurriculum(section.getCurriculum());
+        otherSection.setSchoolYear(schoolYear);
+        otherSection.setSemester(semester);
+        otherSection.setYearLevel(1);
+        otherSection.setMaximumCapacity(40);
+        otherSection.setStatus(ActiveStatus.ACTIVE);
+        otherSection = sectionRepository.save(otherSection);
+        ScheduleResponse otherSchedule = schedule(prerequisiteCourse, otherSection, roomTwo, DayOfWeek.FRIDAY, "15:00", "16:00");
         GradebookResponse otherBook = gradebookService.initialize(otherSchedule.id(), template.getId(), facultyUser(faculty));
         UUID firstBookItemId = book.items().getFirst().id();
         assertThatThrownBy(() -> gradebookService.saveItem(otherSchedule.id(),
@@ -624,15 +642,17 @@ class GradeServiceTests {
     }
 
     private ScheduleResponse schedule(Course course, Section targetSection, Room room, DayOfWeek day, String start, String end) {
-        return scheduleService.create(new ScheduleRequest(
+        ScheduleResponse draft = scheduleService.create(new ScheduleRequest(
                 targetSection.getId(),
                 course.getId(),
                 faculty.getId(),
                 room.getId(),
                 40,
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 List.of(new ScheduleMeetingRequest(day, LocalTime.parse(start), LocalTime.parse(end)))
         ));
+        return scheduleService.activate(draft.id(),
+                new ScheduleLifecycleRequest(draft.version(), null, false, List.of()), null);
     }
 
     private Course course(String code, String title, Department department) {
@@ -666,6 +686,7 @@ class GradeServiceTests {
         room.setRoomCode(code);
         room.setRoomName(code + " Room");
         room.setCapacity(40);
+        room.setRoomType("GENERAL");
         room.setStatus(ActiveStatus.ACTIVE);
         return roomRepository.save(room);
     }
@@ -693,6 +714,7 @@ class GradeServiceTests {
         section.setSchoolYear(targetYear);
         section.setSemester(targetSemester);
         section.setYearLevel(1);
+        section.setMaximumCapacity(40);
         section.setStatus(ActiveStatus.ACTIVE);
         return sectionRepository.save(section);
     }

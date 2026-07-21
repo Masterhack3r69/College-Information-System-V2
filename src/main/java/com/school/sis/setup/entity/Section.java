@@ -46,6 +46,9 @@ public class Section extends AuditableEntity {
     @Column(name = "year_level", nullable = false)
     private int yearLevel;
 
+    @Column(name = "maximum_capacity")
+    private Integer maximumCapacity;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ActiveStatus status = ActiveStatus.ACTIVE;
@@ -68,6 +71,8 @@ public class Section extends AuditableEntity {
     public void setSemester(Semester semester) { this.semester = semester; }
     public int getYearLevel() { return yearLevel; }
     public void setYearLevel(int yearLevel) { this.yearLevel = yearLevel; }
+    public Integer getMaximumCapacity() { return maximumCapacity; }
+    public void setMaximumCapacity(Integer maximumCapacity) { this.maximumCapacity = maximumCapacity; }
     public ActiveStatus getStatus() { return status; }
     public void setStatus(ActiveStatus status) { this.status = status; }
 }

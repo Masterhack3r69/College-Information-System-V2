@@ -22,6 +22,8 @@
 - `FacultyPortalAccess` validates the linked faculty record and assigned schedule/adviser ownership.
 - `StudentPortalAccess` derives the linked student and validates enrollment/request ownership.
 - The frontend guards routes and filters navigation, but backend checks remain authoritative.
+- `SCHEDULE_VIEW` is server-scoped: Super Admin/Registrar see all, Dean/Program Head see the linked department, faculty see assigned schedules, and student self-service derives confirmed owned enrollments.
+- `SCHEDULE_MANAGE`, `SCHEDULE_REVISE`, `SCHEDULE_POLICY_MANAGE`, and `SCHEDULE_OVERRIDE` are mutation authorities granted only to Super Admin and Registrar. Administrative conflict checks require `SCHEDULE_MANAGE`.
 - Finance separates routine posting/session operation from request, approval, disbursement, receipt/template setup, closeout, and reporting permissions. Separation-of-duties checks also compare actor IDs in the service transaction.
 
 See [[User Roles]] for the seeded role matrix.
@@ -42,3 +44,4 @@ Only `/api/v1/auth/login` and `/api/v1/auth/refresh` are anonymous. All other re
 - [[User Roles]]
 - [[Faculty Portal]]
 - [[Student Portal]]
+- [[Scheduling]]

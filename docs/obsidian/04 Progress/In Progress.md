@@ -1,10 +1,31 @@
 # In Progress
 
+## Scheduling Operational Upgrade
+
+### Completed
+
+- V21–V22 schema/backfill, meeting revisions, history, reservations, load policies, section/room profiles, permission cleanup, and optimistic versions.
+- Draft/activate/revise/cancel/archive lifecycle, scoped reads, resource deactivation guards, capacity/load rules, timetable views, and atomic term copy.
+- Administrative planner plus section, faculty-load, room, history, policy, and copy views.
+- Faculty/student term schedule and five-change views with meeting-level rooms and Sunday.
+- Representative V20 migration test, two-transaction exclusion test, backend regressions, frontend typecheck/build, clean Docker Flyway/Hibernate startup, and authenticated API smoke.
+
+### Remaining
+
+- Extend the focused cross-role Playwright suite into a seeded live-stack multi-account run.
+- Remove the compatibility top-level schedule room after one consumer-migration release.
+
+### Related
+
+- [[Scheduling]]
+- [[Scheduling Test Cases]]
+- [[ADR-004 Schedule Revisions and Resource Reservations]]
+
 ## Cross-Role MVP Verification
 
 ### Current State
 
-The backend suite discovers 89 tests (88 passed, 1 Docker-dependent test skipped), and the frontend production build succeeds. The development schema is at V20. Focused academic-exception and administrative term-selector desktop/mobile browser checks pass; full cross-account lifecycle automation remains incomplete.
+The backend and frontend production gates pass for the scheduling slice, and the development schema is at V22. Focused academic-exception and scheduling desktop/mobile browser checks pass; full cross-account lifecycle automation remains incomplete.
 
 ### Completed
 
@@ -22,7 +43,7 @@ The backend suite discovers 89 tests (88 passed, 1 Docker-dependent test skipped
 
 ### Blockers
 
-- Testcontainers Docker auto-detection still skips locally, although the running PostgreSQL 16 Docker Compose database applied and validated Flyway V1–V20.
+- Docker Desktop 29 requires `-Dapi.version=1.44` for Testcontainers 1.20.4; the PostgreSQL tests run with that compatibility setting.
 
 ## Enrollment and Academic Exceptions Upgrade
 

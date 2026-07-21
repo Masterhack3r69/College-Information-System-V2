@@ -17,4 +17,5 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID>, J
     );
 
     java.util.Optional<Enrollment> findFirstByStudentIdOrderBySchoolYearSchoolYearDescSemesterSortOrderDesc(java.util.UUID studentId);
+    long countBySectionIdAndStatus(UUID sectionId, EnrollmentStatus status);
 }

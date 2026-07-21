@@ -1,5 +1,29 @@
 # Change Log
 
+## 2026-07-21
+
+### Added
+
+- V21–V22 meeting-level scheduling, room/section profiles, optimistic schedule versions, JSONB change history, exclusion-protected resource reservations, and term/faculty-type load policies.
+- Draft activation, controlled active revision, reasoned cancel/archive, scoped timetable/load/availability/history APIs, atomic term copy, stable business codes, and resource-deactivation guards.
+- Administrative scheduling planner/history/load/policy/copy workspace plus faculty/student term schedules and five-change views.
+- Representative V20 migration/backfill, two-transaction reservation-race tests, and focused Registrar/Dean/Faculty/Student scheduling Playwright coverage.
+
+### Changed
+
+- Schedule identity is preserved after publication; revisions retire meetings and retain downstream enrollment, attendance, gradebook, report, and Finance relationships.
+- Schedule reads are server-scoped by role/department/assignment/ownership; mutation permissions belong only to Registrar and Super Admin.
+- Faculty class/student counts use confirmed enrollment, and portal schedules use meeting-level locations with Sunday support.
+
+### Fixed
+
+- Application-only conflict races, stale meeting-only revisions that did not advance the schedule version, online-only request compatibility, active-resource deactivation, and top-level room assumptions.
+
+### Documentation
+
+- Added [[Scheduling]], [[Scheduling Endpoints]], [[Scheduling Data Dictionary]], [[Scheduling Test Cases]], and [[ADR-004 Schedule Revisions and Resource Reservations]].
+- Updated [[Academic Setup]], [[Enrollment]], [[Faculty Portal]], [[Student Portal]], [[Authentication and Roles]], [[Database Overview]], [[Known Issues]], [[In Progress]], and [[MVP Dashboard]].
+
 ## 2026-07-16
 
 ### Added

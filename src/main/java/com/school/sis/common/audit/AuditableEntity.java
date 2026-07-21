@@ -28,4 +28,8 @@ public abstract class AuditableEntity {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    protected void touchForVersioning() {
+        updatedAt = Instant.now();
+    }
 }

@@ -1,5 +1,23 @@
-import { CalendarDays,MapPin } from "lucide-react"
+import { useState } from "react"
+import { CalendarDays, History, MapPin } from "lucide-react"
 import { Link } from "react-router-dom"
-import { useFacultySchedule } from "@/hooks/use-faculty-portal"
-const days=["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"]
-export default function FacultySchedulePage(){const q=useFacultySchedule();return <div className="mx-auto max-w-[1100px] p-5 md:p-8"><h1 className="text-3xl font-semibold text-[#092f66]">Teaching Schedule</h1><p className="mt-1 text-slate-600">Your assigned rooms and meeting times.</p><div className="mt-7 grid gap-4 lg:grid-cols-2">{days.map(day=><section key={day} className="overflow-hidden rounded-lg border"><h2 className="flex items-center gap-2 border-b bg-slate-50 px-4 py-3 font-semibold"><CalendarDays/>{day[0]+day.slice(1).toLowerCase()}</h2><div className="flex flex-col gap-2 p-3">{q.data?.filter(x=>x.dayOfWeek===day).map(x=><Link to={`/faculty/classes/${x.scheduleId}`} key={`${x.scheduleId}-${x.startTime}`} className="rounded-md border-l-4 border-l-[#0b6f78] p-3 hover:bg-slate-50"><p className="font-semibold text-[#092f66]">{x.startTime.slice(0,5)}–{x.endTime.slice(0,5)} · {x.courseCode}</p><p className="text-sm">{x.courseTitle} · {x.sectionCode}</p><p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><MapPin/>{x.roomCode}</p></Link>)}{!q.data?.some(x=>x.dayOfWeek===day)?<p className="p-4 text-center text-sm text-slate-500">No classes</p>:null}</div></section>)}</div></div>}
+import { useFacultySchedule, useFacultyScheduleChanges, useFacultyScheduleTerms } from "@/hooks/use-faculty-portal"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+const days=["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"]
+
+export default function FacultySchedulePage(){
+  const [chosen,setChosen]=useState("")
+  const terms=useFacultyScheduleTerms()
+  const selected=terms.data?.find(term=>`${term.schoolYearId}|${term.semesterId}`===chosen)??terms.data?.find(term=>term.active)??terms.data?.[0]
+  const schedule=useFacultySchedule(selected?.schoolYearId,selected?.semesterId)
+  const changes=useFacultyScheduleChanges(selected?.schoolYearId,selected?.semesterId)
+  return <main className="mx-auto flex max-w-[1100px] flex-col gap-6 p-5 md:p-8">
+    <header className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-3xl font-semibold text-[#092f66]">Teaching Schedule</h1><p className="mt-1 text-slate-600">Assigned meeting rooms and times, including historical terms.</p></div><Select value={selected?`${selected.schoolYearId}|${selected.semesterId}`:""} onValueChange={setChosen}><SelectTrigger className="w-64"><SelectValue placeholder="Select term"/></SelectTrigger><SelectContent>{terms.data?.map(term=><SelectItem key={`${term.schoolYearId}-${term.semesterId}`} value={`${term.schoolYearId}|${term.semesterId}`}>{term.schoolYear} · {term.semesterName.replaceAll("_"," ")}{term.active?" · Active":""}</SelectItem>)}</SelectContent></Select></header>
+    {changes.data?.length?<Alert><History/><AlertTitle>Recent schedule changes</AlertTitle><AlertDescription><div className="mt-1 flex flex-col gap-2">{changes.data.map(change=><p key={change.id}><Badge variant="outline" className="mr-2">{change.action}</Badge>{change.courseCode}/{change.sectionCode}{change.reason?` — ${change.reason}`:""}</p>)}</div></AlertDescription></Alert>:null}
+    <div className="grid gap-4 lg:grid-cols-2">{days.map(day=><section key={day} className="overflow-hidden rounded-lg border"><h2 className="flex items-center gap-2 border-b bg-slate-50 px-4 py-3 font-semibold"><CalendarDays/>{title(day)}</h2><div className="flex min-h-24 flex-col gap-2 p-3">{schedule.data?.filter(item=>item.dayOfWeek===day).map(item=><Link to={`/faculty/classes/${item.scheduleId}`} key={`${item.scheduleId}-${item.startTime}`} className="rounded-md border-l-4 border-l-[#0b6f78] p-3 hover:bg-slate-50"><p className="font-semibold text-[#092f66]">{item.startTime.slice(0,5)}–{item.endTime.slice(0,5)} · {item.courseCode}</p><p className="text-sm">{item.courseTitle} · {item.sectionCode}</p><p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><MapPin/>{item.deliveryMode==="ONLINE"?item.locationDetails||"Online":item.roomCode||"Room pending"} · {item.componentType}</p></Link>)}{!schedule.data?.some(item=>item.dayOfWeek===day)?<p className="p-4 text-center text-sm text-slate-500">No classes</p>:null}</div></section>)}</div>
+  </main>
+}
+function title(value:string){return value[0]+value.slice(1).toLowerCase()}

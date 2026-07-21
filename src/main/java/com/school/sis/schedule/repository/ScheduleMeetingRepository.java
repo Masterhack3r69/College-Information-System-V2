@@ -20,16 +20,17 @@ public interface ScheduleMeetingRepository extends JpaRepository<ScheduleMeeting
             join fetch schedule.section section
             join fetch schedule.course course
             join fetch schedule.faculty faculty
-            join fetch schedule.room room
+            left join fetch meeting.room room
             where schedule.schoolYear.id = :schoolYearId
               and schedule.semester.id = :semesterId
               and schedule.status = :status
+              and meeting.active = true
               and meeting.dayOfWeek = :dayOfWeek
               and meeting.startTime < :endTime
               and meeting.endTime > :startTime
               and (:ignoreScheduleId is null or schedule.id <> :ignoreScheduleId)
               and (
-                    schedule.room.id = :roomId
+                    (:roomId is not null and meeting.room.id = :roomId)
                  or schedule.faculty.id = :facultyId
                  or schedule.section.id = :sectionId
               )

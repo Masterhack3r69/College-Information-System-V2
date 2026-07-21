@@ -1,13 +1,13 @@
 # Database Overview
 
-PostgreSQL 16 is the production/development database. Flyway migrations `V1` through `V20` are the physical schema and development-seed source of truth.
+PostgreSQL 16 is the production/development database. Flyway migrations `V1` through `V22` are the physical schema and development-seed source of truth.
 
 | Entity group | Purpose | Main relationships | Status |
 |---|---|---|---|
 | Users, roles, permissions, refresh tokens | Identity, RBAC, token lifecycle | Users ↔ roles ↔ permissions; user may link faculty/student | Implemented |
 | Departments, programs, courses, faculty | Academic master data | Programs/courses/faculty belong to departments | Implemented |
 | School years, semesters, curricula, sections | Academic structure and term placement | Curriculum belongs to program; sections reference curriculum and term | Implemented |
-| Class schedules, meetings | Offer courses to sections | Course, section, faculty, room, school year, semester | Implemented |
+| Class schedules, revised meetings, reservations, history, load policies | Plan and publish stable course offerings | Course, section, faculty, meeting room, term; exclusion-protected resources | Implemented |
 | Students and profile tables | Personal, contact, family, education, documents | Student references program/curriculum/term; nested one-to-one/one-to-many data | Implemented |
 | Enrollments, subjects, status history | Term enrollment and class selection | Student/term/section plus scheduled subjects | Implemented |
 | Academic evaluations and course credits | Prior-study evidence, grouped equivalencies, review history, immutable posted credits, reversals, and document links | Case belongs to student/target curriculum; matches group source courses into target course; credit references approved case/match | Implemented |
@@ -30,6 +30,8 @@ PostgreSQL 16 is the production/development database. Flyway migrations `V1` thr
 - Active eligibility policy scope uses a PostgreSQL expression/partial unique index so global `NULL` program scope is unique.
 - Each elective curriculum row belongs to at most one requirement group.
 - Schedule rows are pessimistically locked before final seat recount and enrollment confirmation.
+- Open section/course offerings are unique; `class_schedules.version` rejects stale scheduling changes.
+- Active room/faculty/section meeting ranges use PostgreSQL GiST exclusion constraints; meeting revisions/history retain effective and JSONB change evidence.
 - `assessments.version` provides optimistic conflict detection while mutation services take a pessimistic row lock.
 - Financial request/disbursement UUIDs are unique for idempotency; legacy payment linkage remains nullable.
 - Fee-rule identical scopes use PostgreSQL null-aware uniqueness.
@@ -37,6 +39,12 @@ PostgreSQL 16 is the production/development database. Flyway migrations `V1` thr
 - V18 removes inappropriate academic-role enrollment grants and adds attendance/history indexes used by cancellation readiness.
 - V19 adds academic evaluations, grouped matches, decision history, documents, course credits/reversals, and evaluation permissions.
 - V20 adds elective groups, eligibility policies/approval snapshots, graduation audits/issues, and policy/audit permissions.
+- V21 adds meeting-level components/delivery/rooms, capacity profiles, history, resource reservations, scheduling permissions, and optimistic versions.
+- V22 adds term/faculty-type teaching-load policies.
+
+## V21–V22 Scheduling Summary
+
+See [[Scheduling Data Dictionary]] for field-level detail and [[ADR-004 Schedule Revisions and Resource Reservations]] for the concurrency decision.
 
 ## V19 Entity Summary
 
@@ -69,3 +77,4 @@ PostgreSQL 16 is the production/development database. Flyway migrations `V1` thr
 - [[Enrollment]]
 - [[Finance Data Dictionary]]
 - [[Academic Exceptions]]
+- [[Scheduling]]

@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 
 export type FacultyClass = { scheduleId:string; courseCode:string; courseTitle:string; sectionCode:string; roomCode:string; schoolYear:string; semesterName:string; studentCount:number; gradeStatus:string; attendanceCount:number }
-export type FacultyMeeting = { id:string; dayOfWeek:string; startTime:string; endTime:string }
+export type FacultyMeeting = { id:string; dayOfWeek:string; startTime:string; endTime:string; roomCode?:string; componentType?:string; deliveryMode?:string; locationDetails?:string }
 export type RosterStudent = { enrollmentSubjectId:string; studentId:string; studentNumber:string; studentName:string; programCode:string; sectionCode:string; status:string }
 export type FacultyClassDetail = FacultyClass & { meetings:FacultyMeeting[]; roster:RosterStudent[] }
-export type FacultyDashboard = { today:(FacultyClass & {startTime:string;endTime:string})[]; classes:FacultyClass[]; returnedGradebooks:number; activeTerm:{schoolYear?:string;semesterName?:string}; hasAdvising:boolean }
+export type FacultyDashboard = { today:(FacultyClass & {startTime:string;endTime:string})[]; classes:FacultyClass[]; returnedGradebooks:number; activeTerm:{schoolYearId?:string;schoolYear?:string;semesterId?:string;semesterName?:string}; hasAdvising:boolean }
+export type ScheduleTerm = { schoolYearId:string; schoolYear:string; semesterId:string; semesterName:string; active:boolean }
+export type PortalScheduleChange = { id:string; action:string; reason?:string; changedAt:string; actorName?:string; courseCode:string; sectionCode:string }
 export type AttendanceSession = { id:string; meetingDate:string; startTime:string; endTime:string; roomCode:string; status:"DRAFT"|"FINALIZED"; version:number; entries?:AttendanceEntry[] }
 export type AttendanceEntry = { enrollmentSubjectId:string; studentNumber:string; studentName:string; status:"PRESENT"|"LATE"|"ABSENT"|"EXCUSED"; notes?:string }
 export type ContentItem = { id:string; title:string; body?:string; description?:string; filename?:string; status:string; publishedAt?:string }
@@ -15,7 +17,9 @@ export type FacultyProfile = { employeeNumber:string; fullName:string; email:str
 export const useFacultyDashboard=()=>useQuery({queryKey:["faculty-dashboard"],queryFn:()=>api<FacultyDashboard>("/faculty/me/dashboard")})
 export const useFacultyClasses=()=>useQuery({queryKey:["faculty-classes"],queryFn:()=>api<FacultyClass[]>("/faculty/me/classes")})
 export const useFacultyClass=(id?:string)=>useQuery({queryKey:["faculty-class",id],queryFn:()=>api<FacultyClassDetail>(`/faculty/me/classes/${id}`),enabled:!!id})
-export const useFacultySchedule=()=>useQuery({queryKey:["faculty-schedule"],queryFn:()=>api<(FacultyMeeting&FacultyClass)[]>("/faculty/me/schedule")})
+export const useFacultySchedule=(schoolYearId?:string,semesterId?:string)=>useQuery({queryKey:["faculty-schedule",schoolYearId,semesterId],queryFn:()=>api<(FacultyMeeting&FacultyClass)[]>(`/faculty/me/schedule${schoolYearId&&semesterId?`?schoolYearId=${schoolYearId}&semesterId=${semesterId}`:""}`)})
+export const useFacultyScheduleTerms=()=>useQuery({queryKey:["faculty-schedule-terms"],queryFn:()=>api<ScheduleTerm[]>("/faculty/me/schedule/terms")})
+export const useFacultyScheduleChanges=(schoolYearId?:string,semesterId?:string)=>useQuery({queryKey:["faculty-schedule-changes",schoolYearId,semesterId],queryFn:()=>api<PortalScheduleChange[]>(`/faculty/me/schedule/changes?schoolYearId=${schoolYearId}&semesterId=${semesterId}`),enabled:!!schoolYearId&&!!semesterId})
 export const useAttendance=(scheduleId?:string)=>useQuery({queryKey:["faculty-attendance",scheduleId],queryFn:()=>api<AttendanceSession[]>(`/faculty/me/classes/${scheduleId}/attendance`),enabled:!!scheduleId})
 export const useAttendanceSession=(id?:string)=>useQuery({queryKey:["attendance-session",id],queryFn:()=>api<AttendanceSession>(`/faculty/me/attendance/${id}`),enabled:!!id})
 export const useCreateAttendance=()=>{const c=useQueryClient();return useMutation({mutationFn:(v:{scheduleId:string;meetingId:string;meetingDate:string})=>api<AttendanceSession>(`/faculty/me/classes/${v.scheduleId}/attendance`,{method:"POST",body:JSON.stringify(v)}),onSuccess:(d)=>{c.setQueryData(["attendance-session",d.id],d);void c.invalidateQueries({queryKey:["faculty-attendance"]})}})}

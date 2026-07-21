@@ -17,7 +17,7 @@ Users with the `STUDENT` role, `STUDENT_PORTAL_ACCESS`, and a linked `student_id
 - Student dashboard and current portal-term information.
 - Contact/emergency profile updates and mandatory initial password change.
 - Online enrollment window, selected-load review, normal/back/elective recommendations, seats, meetings, add/drop, validation, and submission.
-- Confirmed schedule, locked grades, full academic plan, approved credits, evaluation status, graduation-audit summaries, curriculum progress, and visible finalized attendance.
+- Term-selectable confirmed schedule with meeting-level locations and latest schedule changes, locked grades, full academic plan, approved credits, evaluation status, graduation-audit summaries, curriculum progress, and visible finalized attendance.
 - All-term assessment itemization, installments, adjustments, gross/refunded/net totals, credits, payment history, and owned receipt PDFs.
 - Portal and class announcements, published materials, downloadable forms.
 - Document/clearance service requests, cancellation, fulfillment download.
@@ -39,6 +39,7 @@ Provision student account → force password change → enter portal → use ena
 - Attendance is shown only when portal settings allow it and sessions are finalized.
 - A student may cancel only a `SUBMITTED` service request.
 - Student receipt download requires `STUDENT_FINANCE_SELF` and server-side payment ownership validation; each access is audited.
+- Schedule terms are limited to confirmed owned enrollments. The configured portal term is the default; Sunday and the five latest applicable schedule changes are included.
 
 ## Frontend Implementation
 
@@ -54,7 +55,7 @@ Routes under `/student`: dashboard, enrollment, schedule, academics, finance, an
 
 ## API Endpoints
 
-Student endpoints use `/api/v1/student/me/*`; administrative endpoints use `/api/v1/student-portal/admin/*`.
+Student endpoints use `/api/v1/student/me/*`; schedule additions are `/schedule`, `/schedule/terms`, and `/schedule/changes`. Administrative endpoints use `/api/v1/student-portal/admin/*`.
 
 Academic additions: `/academic-plan`, `/course-credits`, `/academic-evaluations`, and `/graduation-audits`. Enrollment detail now returns selected subjects and validation.
 
@@ -62,7 +63,7 @@ Finance receipt: `GET /api/v1/student/me/payments/{paymentId}/receipt`.
 
 ## Known Gaps
 
-- No comprehensive student browser test suite was found.
+- A focused scheduling browser case covers confirmed-term ownership fixtures, Sunday, and the latest change banner; the complete student portal still lacks one comprehensive browser suite.
 - Focused responsive checks passed, but a signed-in automated student add/drop/submit browser suite remains to be added.
 - Files use local filesystem storage.
 
@@ -72,3 +73,4 @@ Finance receipt: `GET /api/v1/student/me/payments/{paymentId}/receipt`.
 - [[Billing]]
 - [[Authentication and Roles]]
 - [[Academic Exceptions]]
+- [[Scheduling]]

@@ -100,8 +100,9 @@ public class StudentPortalService {
       exists(select 1 from enrollment_subjects selected join enrollments se on se.id=selected.enrollment_id
         where selected.class_schedule_id=cs.id and selected.status='ENROLLED' and se.student_id=st.id
           and se.school_year_id=? and se.semester_id=? and se.status in ('DRAFT','SUBMITTED','CONFIRMED')) as selected,
-      coalesce((select json_agg(json_build_object('dayOfWeek',m.day_of_week,'startTime',m.start_time,'endTime',m.end_time) order by m.day_of_week,m.start_time)
-        from schedule_meetings m where m.class_schedule_id=cs.id),'[]') as meetings
+      coalesce((select json_agg(json_build_object('dayOfWeek',m.day_of_week,'startTime',m.start_time,'endTime',m.end_time,
+        'componentType',m.component_type,'deliveryMode',m.delivery_mode,'roomCode',mr.room_code,'locationDetails',m.location_details) order by m.day_of_week,m.start_time)
+        from schedule_meetings m left join rooms mr on mr.id=m.room_id where m.class_schedule_id=cs.id and m.active=true),'[]') as meetings
       from students st left join student_educational_backgrounds seb on seb.student_id=st.id
       join semesters sm on sm.id=?
       join curriculum_courses cc on cc.curriculum_id=st.curriculum_id and (
@@ -124,12 +125,26 @@ public class StudentPortalService {
     private void ensureEnrollmentOpen(){var t=term();if(t.isEmpty()||!Boolean.TRUE.equals(t.get("enrollmentEnabled")))throw new BusinessRuleException("Online enrollment is not enabled");Instant now=Instant.now(),opens=asInstant(t.get("enrollmentOpensAt")),closes=asInstant(t.get("enrollmentClosesAt"));if(opens!=null&&now.isBefore(opens))throw new BusinessRuleException("Online enrollment has not opened");if(closes!=null&&now.isAfter(closes))throw new BusinessRuleException("Online enrollment is closed");}
     private Instant asInstant(Object value){if(value instanceof Instant x)return x;if(value instanceof java.time.OffsetDateTime x)return x.toInstant();if(value instanceof java.sql.Timestamp x)return x.toInstant();return null;}
 
-    @Transactional(readOnly=true) public List<Map<String,Object>> schedule(SisUserDetails p){return jdbc.queryForList("""
+    @Transactional(readOnly=true) public List<Map<String,Object>> schedule(SisUserDetails p){var t=term();if(t.isEmpty())return List.of();return schedule((UUID)t.get("schoolYearId"),(UUID)t.get("semesterId"),p);}
+    @Transactional(readOnly=true) public List<Map<String,Object>> schedule(UUID schoolYearId,UUID semesterId,SisUserDetails p){return jdbc.queryForList("""
       select cs.id as "scheduleId",co.course_code as "courseCode",co.course_title as "courseTitle",sec.section_code as "sectionCode",r.room_code as "roomCode",
+      sm.delivery_mode as "deliveryMode",sm.component_type as "componentType",sm.location_details as "locationDetails",
       sm.day_of_week as "dayOfWeek",sm.start_time as "startTime",sm.end_time as "endTime",concat(f.first_name,' ',f.last_name) as faculty
       from enrollment_subjects es join enrollments e on e.id=es.enrollment_id join class_schedules cs on cs.id=es.class_schedule_id join courses co on co.id=cs.course_id
-      join sections sec on sec.id=cs.section_id left join rooms r on r.id=cs.room_id join faculty f on f.id=cs.faculty_id join schedule_meetings sm on sm.class_schedule_id=cs.id
-      where e.student_id=? and e.status='CONFIRMED' and es.status='ENROLLED' order by sm.day_of_week,sm.start_time""",access.studentId(p));}
+      join sections sec on sec.id=cs.section_id join faculty f on f.id=cs.faculty_id join schedule_meetings sm on sm.class_schedule_id=cs.id and sm.active=true left join rooms r on r.id=sm.room_id
+      where e.student_id=? and e.status='CONFIRMED' and es.status='ENROLLED' and cs.school_year_id=? and cs.semester_id=?
+      order by sm.day_of_week,sm.start_time""",access.studentId(p),schoolYearId,semesterId);}
+    @Transactional(readOnly=true) public List<Map<String,Object>> scheduleTerms(SisUserDetails p){return jdbc.queryForList("""
+      select distinct sy.id as "schoolYearId",sy.school_year as "schoolYear",sm.id as "semesterId",sm.name as "semesterName",sy.active and sm.active as active
+      from enrollments e join enrollment_subjects es on es.enrollment_id=e.id and es.status='ENROLLED'
+      join class_schedules cs on cs.id=es.class_schedule_id join school_years sy on sy.id=cs.school_year_id join semesters sm on sm.id=cs.semester_id
+      where e.student_id=? and e.status='CONFIRMED' order by sy.school_year desc,sm.sort_order desc""",access.studentId(p));}
+    @Transactional(readOnly=true) public List<Map<String,Object>> scheduleChanges(UUID schoolYearId,UUID semesterId,SisUserDetails p){return jdbc.queryForList("""
+      select distinct h.id,h.action,h.reason,h.created_at as "changedAt",u.full_name as "actorName",co.course_code as "courseCode",sec.section_code as "sectionCode"
+      from schedule_change_history h join class_schedules cs on cs.id=h.schedule_id join courses co on co.id=cs.course_id join sections sec on sec.id=cs.section_id
+      join enrollment_subjects es on es.class_schedule_id=cs.id and es.status='ENROLLED' join enrollments e on e.id=es.enrollment_id and e.status='CONFIRMED'
+      left join users u on u.id=h.actor_id where e.student_id=? and cs.school_year_id=? and cs.semester_id=?
+      order by h.created_at desc limit 5""",access.studentId(p),schoolYearId,semesterId);}
     @Transactional(readOnly=true) public List<Map<String,Object>> grades(SisUserDetails p){return jdbc.queryForList("""
       select ar.id,ar.course_code as "courseCode",ar.course_title as "courseTitle",ar.credit_units as units,ar.final_grade as grade,ar.remarks,
       ar.earned_units as "earnedUnits",sy.school_year as "schoolYear",sm.name as "semesterName",ar.locked_at as "postedAt"

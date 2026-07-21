@@ -9,6 +9,8 @@ public record RoomResponse(
         String roomCode,
         String roomName,
         Integer capacity,
+        String building,
+        String roomType,
         ActiveStatus status
 ) {
 }

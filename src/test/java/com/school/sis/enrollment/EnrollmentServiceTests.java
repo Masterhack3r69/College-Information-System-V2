@@ -21,6 +21,7 @@ import com.school.sis.enrollment.repository.EnrollmentStatusHistoryRepository;
 import com.school.sis.enrollment.service.EnrollmentService;
 import com.school.sis.schedule.dto.ScheduleMeetingRequest;
 import com.school.sis.schedule.dto.ScheduleRequest;
+import com.school.sis.schedule.dto.ScheduleLifecycleRequest;
 import com.school.sis.schedule.dto.ScheduleResponse;
 import com.school.sis.schedule.entity.ScheduleStatus;
 import com.school.sis.schedule.repository.ClassScheduleRepository;
@@ -313,6 +314,7 @@ class EnrollmentServiceTests {
         outsideSection.setSchoolYear(schoolYear);
         outsideSection.setSemester(semester);
         outsideSection.setYearLevel(1);
+        outsideSection.setMaximumCapacity(40);
         outsideSection.setStatus(ActiveStatus.ACTIVE);
         outsideSection = sectionRepository.save(outsideSection);
 
@@ -435,15 +437,17 @@ class EnrollmentServiceTests {
     }
 
     private ScheduleResponse schedule(Course course, Section section, Faculty faculty, Room room, DayOfWeek day, String start, String end) {
-        return scheduleService.create(new ScheduleRequest(
+        ScheduleResponse draft = scheduleService.create(new ScheduleRequest(
                 section.getId(),
                 course.getId(),
                 faculty.getId(),
                 room.getId(),
                 40,
-                ScheduleStatus.ACTIVE,
+                ScheduleStatus.DRAFT,
                 List.of(new ScheduleMeetingRequest(day, LocalTime.parse(start), LocalTime.parse(end)))
         ));
+        return scheduleService.activate(draft.id(),
+                new ScheduleLifecycleRequest(draft.version(), null, false, List.of()), null);
     }
 
     private Course course(String code, String title, Department department) {
@@ -477,6 +481,7 @@ class EnrollmentServiceTests {
         room.setRoomCode(code);
         room.setRoomName(code + " Room");
         room.setCapacity(40);
+        room.setRoomType("GENERAL");
         room.setStatus(ActiveStatus.ACTIVE);
         return roomRepository.save(room);
     }
@@ -497,6 +502,7 @@ class EnrollmentServiceTests {
         section.setSchoolYear(schoolYear);
         section.setSemester(semester);
         section.setYearLevel(1);
+        section.setMaximumCapacity(40);
         section.setStatus(ActiveStatus.ACTIVE);
         return sectionRepository.save(section);
     }

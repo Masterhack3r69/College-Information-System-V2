@@ -53,9 +53,10 @@ public class FacultyPortalService {
         String day = DayOfWeek.from(LocalDate.now()).name();
         var today = jdbc.queryForList("""
             select cs.id as "scheduleId", c.course_code as "courseCode", c.course_title as "courseTitle",
-                   s.section_code as "sectionCode", r.room_code as "roomCode", sm.start_time as "startTime", sm.end_time as "endTime"
+                   s.section_code as "sectionCode", r.room_code as "roomCode", sm.delivery_mode as "deliveryMode",
+                   sm.start_time as "startTime", sm.end_time as "endTime"
             from class_schedules cs join courses c on c.id=cs.course_id join sections s on s.id=cs.section_id
-            join rooms r on r.id=cs.room_id join schedule_meetings sm on sm.class_schedule_id=cs.id
+            join schedule_meetings sm on sm.class_schedule_id=cs.id and sm.active=true left join rooms r on r.id=sm.room_id
             where cs.faculty_id=? and cs.status='ACTIVE' and sm.day_of_week=? order by sm.start_time
             """, facultyId, day);
         long returned = classes.stream().filter(x -> "RETURNED_FOR_CORRECTION".equals(x.get("gradeStatus"))).count();
@@ -67,11 +68,11 @@ public class FacultyPortalService {
     public List<Map<String,Object>> classes(SisUserDetails p) {
         return jdbc.queryForList("""
             select cs.id as "scheduleId", c.course_code as "courseCode", c.course_title as "courseTitle", s.section_code as "sectionCode",
-                   r.room_code as "roomCode", sy.school_year as "schoolYear", sem.name as "semesterName",
-                   count(distinct es.id) as "studentCount", coalesce(cg.status,'DRAFT') as "gradeStatus",
+                   coalesce(r.room_code,'Multiple / Online') as "roomCode", sy.school_year as "schoolYear", sem.name as "semesterName",
+                   count(distinct case when e.status='CONFIRMED' then es.id end) as "studentCount", coalesce(cg.status,'DRAFT') as "gradeStatus",
                    coalesce((select count(*) from attendance_sessions a where a.schedule_id=cs.id and a.status='FINALIZED'),0) as "attendanceCount"
             from class_schedules cs join courses c on c.id=cs.course_id join sections s on s.id=cs.section_id
-            join rooms r on r.id=cs.room_id join school_years sy on sy.id=cs.school_year_id join semesters sem on sem.id=cs.semester_id
+            left join rooms r on r.id=cs.room_id join school_years sy on sy.id=cs.school_year_id join semesters sem on sem.id=cs.semester_id
             left join enrollment_subjects es on es.class_schedule_id=cs.id and es.status='ENROLLED'
             left join enrollments e on e.id=es.enrollment_id and e.status='CONFIRMED'
             left join class_gradebooks cg on cg.schedule_id=cs.id
@@ -88,12 +89,18 @@ public class FacultyPortalService {
             select cs.id as "scheduleId", c.course_code as "courseCode", c.course_title as "courseTitle", s.section_code as "sectionCode",
                    r.room_code as "roomCode", sy.school_year as "schoolYear", sem.name as "semesterName"
             from class_schedules cs join courses c on c.id=cs.course_id join sections s on s.id=cs.section_id
-            join rooms r on r.id=cs.room_id join school_years sy on sy.id=cs.school_year_id join semesters sem on sem.id=cs.semester_id
+            left join rooms r on r.id=cs.room_id join school_years sy on sy.id=cs.school_year_id join semesters sem on sem.id=cs.semester_id
             where cs.id=?
             """, scheduleId);
         if(rows.isEmpty()) throw new NotFoundException("Class not found");
         var result = new LinkedHashMap<String,Object>(rows.getFirst());
-        result.put("meetings", jdbc.queryForList("select id,day_of_week as \"dayOfWeek\",start_time as \"startTime\",end_time as \"endTime\" from schedule_meetings where class_schedule_id=? order by day_of_week,start_time", scheduleId));
+        result.put("meetings", jdbc.queryForList("""
+                select sm.id,sm.day_of_week as "dayOfWeek",sm.start_time as "startTime",sm.end_time as "endTime",
+                       sm.component_type as "componentType",sm.delivery_mode as "deliveryMode",r.room_code as "roomCode",
+                       sm.location_details as "locationDetails"
+                from schedule_meetings sm left join rooms r on r.id=sm.room_id
+                where sm.class_schedule_id=? and sm.active=true order by sm.day_of_week,sm.start_time
+                """, scheduleId));
         result.put("roster", roster(scheduleId,p));
         return result;
     }
@@ -112,13 +119,45 @@ public class FacultyPortalService {
 
     @Transactional(readOnly = true)
     public List<Map<String,Object>> schedule(SisUserDetails p) {
+        Map<String,Object> term = activeTerm();
+        if (term.isEmpty()) return List.of();
+        return schedule((UUID) term.get("schoolYearId"), (UUID) term.get("semesterId"), p);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String,Object>> schedule(UUID schoolYearId, UUID semesterId, SisUserDetails p) {
         return jdbc.queryForList("""
             select cs.id as "scheduleId", c.course_code as "courseCode", c.course_title as "courseTitle", s.section_code as "sectionCode",
-                   r.room_code as "roomCode", sm.day_of_week as "dayOfWeek", sm.start_time as "startTime", sm.end_time as "endTime"
-            from class_schedules cs join courses c on c.id=cs.course_id join sections s on s.id=cs.section_id join rooms r on r.id=cs.room_id
-            join schedule_meetings sm on sm.class_schedule_id=cs.id where cs.faculty_id=? and cs.status='ACTIVE'
+                   r.room_code as "roomCode", sm.delivery_mode as "deliveryMode",sm.component_type as "componentType",
+                   sm.location_details as "locationDetails",sm.day_of_week as "dayOfWeek", sm.start_time as "startTime", sm.end_time as "endTime"
+            from class_schedules cs join courses c on c.id=cs.course_id join sections s on s.id=cs.section_id
+            join schedule_meetings sm on sm.class_schedule_id=cs.id and sm.active=true left join rooms r on r.id=sm.room_id
+            where cs.faculty_id=? and cs.status='ACTIVE' and cs.school_year_id=? and cs.semester_id=?
             order by sm.day_of_week,sm.start_time
-            """, access.facultyId(p));
+            """, access.facultyId(p), schoolYearId, semesterId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String,Object>> scheduleTerms(SisUserDetails p) {
+        return jdbc.queryForList("""
+                select distinct sy.id as "schoolYearId",sy.school_year as "schoolYear",sem.id as "semesterId",
+                       sem.name as "semesterName",sy.active and sem.active as active
+                from class_schedules cs join school_years sy on sy.id=cs.school_year_id join semesters sem on sem.id=cs.semester_id
+                where cs.faculty_id=? and cs.status in ('ACTIVE','ARCHIVED')
+                order by sy.school_year desc,sem.sort_order desc
+                """, access.facultyId(p));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String,Object>> scheduleChanges(UUID schoolYearId, UUID semesterId, SisUserDetails p) {
+        return jdbc.queryForList("""
+                select h.id,h.action,h.reason,h.created_at as "changedAt",u.full_name as "actorName",
+                       c.course_code as "courseCode",s.section_code as "sectionCode"
+                from schedule_change_history h join class_schedules cs on cs.id=h.schedule_id
+                join courses c on c.id=cs.course_id join sections s on s.id=cs.section_id left join users u on u.id=h.actor_id
+                where cs.faculty_id=? and cs.school_year_id=? and cs.semester_id=?
+                order by h.created_at desc limit 5
+                """, access.facultyId(p), schoolYearId, semesterId);
     }
 
     @Transactional(readOnly = true)
@@ -205,7 +244,7 @@ public class FacultyPortalService {
     @Transactional public Map<String,Object> requestCorrection(UUID gradeId,BigDecimal proposedGrade,String proposedRemark,String reason,SisUserDetails p){var rows=jdbc.queryForList("select g.final_grade,g.status,cs.id schedule_id from grades g join class_schedules cs on cs.id=? where g.id=? and cs.faculty_id=?",jdbc.queryForObject("select class_schedule_id from enrollment_subjects where id=(select enrollment_subject_id from grades where id=?)",UUID.class,gradeId),gradeId,access.facultyId(p));if(rows.isEmpty())throw new BusinessRuleException("Grade does not belong to an assigned class");if(!"LOCKED".equals(rows.getFirst().get("status")))throw new BusinessRuleException("Only locked grades use the correction-request workflow");UUID id=UUID.randomUUID();UUID scheduleId=(UUID)rows.getFirst().get("schedule_id");jdbc.update("insert into grade_correction_requests(id,grade_id,schedule_id,requested_by,current_grade,proposed_grade,proposed_remark,reason) values(?,?,?,?,?,?,?,?)",id,gradeId,scheduleId,p.id(),rows.getFirst().get("final_grade"),proposedGrade,proposedRemark,reason.trim());jdbc.update("insert into grade_correction_history(request_id,to_status,comment,changed_by) values(?,'SUBMITTED',?,?)",id,reason,p.id());return jdbc.queryForMap("select id,status,created_at as \"createdAt\" from grade_correction_requests where id=?",id);}
     @Transactional public void cancelCorrection(UUID id,SisUserDetails p){int n=jdbc.update("update grade_correction_requests set status='CANCELLED',version=version+1,updated_at=now() where id=? and requested_by=? and status='SUBMITTED'",id,p.id());if(n==0)throw new BusinessRuleException("Only a submitted request can be cancelled");jdbc.update("insert into grade_correction_history(request_id,from_status,to_status,changed_by) values(?,'SUBMITTED','CANCELLED',?)",id,p.id());}
 
-    private Map<String,Object> activeTerm(){var rows=jdbc.queryForList("select sy.school_year as \"schoolYear\",sem.name as \"semesterName\" from school_years sy cross join semesters sem where sy.active=true and sem.active=true order by sem.sort_order limit 1");return rows.isEmpty()?Map.of():rows.getFirst();}
+    private Map<String,Object> activeTerm(){var rows=jdbc.queryForList("select sy.id as \"schoolYearId\",sy.school_year as \"schoolYear\",sem.id as \"semesterId\",sem.name as \"semesterName\" from school_years sy cross join semesters sem where sy.active=true and sem.active=true order by sem.sort_order limit 1");return rows.isEmpty()?Map.of():rows.getFirst();}
     private void history(UUID session,String action,String reason,UUID user){jdbc.update("insert into attendance_history(session_id,action,reason,changed_by) values(?,?,?,?)",session,action,reason,user);}
     private String extension(String name){if(name==null)return "";int i=name.lastIndexOf('.');return i<0?"":name.substring(i).replaceAll("[^A-Za-z0-9.]","").toLowerCase(Locale.ROOT);}
 }

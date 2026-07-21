@@ -14,7 +14,7 @@ Users with the `FACULTY` role, `FACULTY_PORTAL_ACCESS`, and a linked `faculty_id
 
 ## Current Features
 
-- Dashboard, assigned classes, roster, schedule, profile, and password change.
+- Dashboard, assigned classes, roster, term-selectable schedule, meeting-level locations, latest schedule changes, profile, and password change.
 - Weighted gradebook initialization, score entry, and submission.
 - Attendance draft/finalize/reopen workflows.
 - Class announcements and learning-material upload.
@@ -32,6 +32,9 @@ Sign in → portal selected from available portals → open an assigned class �
 - Gradebook actions follow the status workflow in [[Grading]].
 - Content statuses are `DRAFT`, `PUBLISHED`, or `ARCHIVED`; only published content is student-visible.
 - Password changes require the current password and revoke other refresh tokens.
+- Schedule terms are limited to assigned current/historical terms; the default is the configured active portal term.
+- Class and student totals count confirmed enrollment subjects only.
+- Schedule and change endpoints expose only assigned schedules, include Sunday, and return the five latest applicable changes.
 
 ## Frontend Implementation
 
@@ -47,16 +50,16 @@ Faculty/users, class schedules and meetings, enrollments/subjects, attendance se
 
 ## API Endpoints
 
-All self-service endpoints are under `/api/v1/faculty/me`, including `/dashboard`, `/classes`, `/schedule`, `/profile`, class `/gradebook`, `/attendance`, `/announcements`, `/materials`, `/advising`, `/locked-grades`, and `/grade-corrections`.
+All self-service endpoints are under `/api/v1/faculty/me`, including `/dashboard`, `/classes`, `/schedule`, `/schedule/terms`, `/schedule/changes`, `/profile`, class `/gradebook`, `/attendance`, `/announcements`, `/materials`, `/advising`, `/locked-grades`, and `/grade-corrections`.
 
 ## Known Gaps
 
 - Top-level attendance, content, and reports are navigation redirects rather than dedicated index pages.
-- Portal behavior has access-helper unit tests, but no comprehensive faculty browser suite was found.
+- A focused scheduling browser case covers assigned Sunday meetings, change history, and mobile overflow; the complete faculty class-workspace lifecycle still lacks one comprehensive browser suite.
 
 ## Related Notes
 
 - [[Grading]]
 - [[Authentication and Roles]]
 - [[Student Portal]]
-
+- [[Scheduling]]

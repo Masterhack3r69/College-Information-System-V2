@@ -55,4 +55,18 @@ public interface EnrollmentSubjectRepository extends JpaRepository<EnrollmentSub
               AND e.status = com.school.sis.enrollment.entity.EnrollmentStatus.CONFIRMED
             """)
     boolean isFacultyAssignedToStudent(@Param("facultyId") UUID facultyId, @Param("studentId") UUID studentId);
+
+    @Query("""
+            select case when count(subject) > 0 then true else false end
+            from EnrollmentSubject subject
+            where subject.classSchedule.id = :scheduleId
+              and subject.enrollment.status in (
+                com.school.sis.enrollment.entity.EnrollmentStatus.DRAFT,
+                com.school.sis.enrollment.entity.EnrollmentStatus.SUBMITTED,
+                com.school.sis.enrollment.entity.EnrollmentStatus.CONFIRMED
+              )
+            """)
+    boolean existsConsumingEnrollmentActivity(@Param("scheduleId") UUID scheduleId);
+
+    long countByClassScheduleId(UUID scheduleId);
 }
