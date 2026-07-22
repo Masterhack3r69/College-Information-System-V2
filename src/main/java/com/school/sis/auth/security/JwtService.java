@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class JwtService {
@@ -23,13 +24,16 @@ public class JwtService {
     }
 
     public String createAccessToken(SisUserDetails userDetails) {
+        if (userDetails.sessionId() == null) throw new IllegalArgumentException("A session is required for access tokens");
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(userDetails.getUsername())
                 .claims(Map.of(
                         "userId", userDetails.id().toString(),
                         "email", userDetails.email(),
-                        "fullName", userDetails.fullName()
+                        "fullName", userDetails.fullName(),
+                        "sid", userDetails.sessionId().toString(),
+                        "securityVersion", userDetails.securityVersion()
                 ))
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(properties.accessExpirationSeconds())))
@@ -44,7 +48,15 @@ public class JwtService {
     public boolean isValid(String token, SisUserDetails userDetails) {
         Claims claims = claims(token);
         return claims.getSubject().equals(userDetails.getUsername())
-                && claims.getExpiration().after(Date.from(Instant.now()));
+                && claims.getExpiration().after(Date.from(Instant.now()))
+                && securityVersion(token) == userDetails.securityVersion();
+    }
+
+    public UUID sessionId(String token) { return UUID.fromString(claims(token).get("sid", String.class)); }
+
+    public long securityVersion(String token) {
+        Number value = claims(token).get("securityVersion", Number.class);
+        return value == null ? -1 : value.longValue();
     }
 
     private Claims claims(String token) {

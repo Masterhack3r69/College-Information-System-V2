@@ -1,8 +1,6 @@
 package com.school.sis.faculty;
 
-import com.school.sis.auth.entity.User;
-import com.school.sis.auth.repository.RefreshTokenRepository;
-import com.school.sis.auth.repository.UserRepository;
+import com.school.sis.auth.service.LinkedIdentitySyncService;
 import com.school.sis.auth.security.SisUserDetails;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
@@ -10,7 +8,6 @@ import com.school.sis.setup.entity.Faculty;
 import com.school.sis.setup.repository.FacultyRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,17 +29,14 @@ public class FacultyPortalService {
             "application/vnd.openxmlformats-officedocument.presentationml.presentation", "text/plain", "image/png", "image/jpeg");
     private final JdbcTemplate jdbc;
     private final FacultyPortalAccess access;
-    private final UserRepository users;
     private final FacultyRepository faculty;
-    private final RefreshTokenRepository refreshTokens;
-    private final PasswordEncoder passwordEncoder;
+    private final LinkedIdentitySyncService identitySync;
     private final Path materialRoot;
 
-    public FacultyPortalService(JdbcTemplate jdbc, FacultyPortalAccess access, UserRepository users, FacultyRepository faculty,
-                                RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder,
+    public FacultyPortalService(JdbcTemplate jdbc, FacultyPortalAccess access, FacultyRepository faculty,
+                                LinkedIdentitySyncService identitySync,
                                 @Value("${sis.storage.material-root:uploads/materials}") String materialRoot) {
-        this.jdbc = jdbc; this.access = access; this.users = users; this.faculty = faculty;
-        this.refreshTokens = refreshTokens; this.passwordEncoder = passwordEncoder;
+        this.jdbc = jdbc; this.access = access; this.faculty = faculty; this.identitySync = identitySync;
         this.materialRoot = Path.of(materialRoot).toAbsolutePath().normalize();
     }
 
@@ -176,20 +170,9 @@ public class FacultyPortalService {
         String normalized=email.trim().toLowerCase(Locale.ROOT); UUID facultyId=access.facultyId(p);
         Integer duplicate=jdbc.queryForObject("select count(*) from users where lower(email)=? and id<>?",Integer.class,normalized,p.id());
         if(duplicate!=null&&duplicate>0) throw new BusinessRuleException("Email is already in use");
-        User user=users.findById(p.id()).orElseThrow(()->new NotFoundException("User not found"));
         Faculty f=faculty.findById(facultyId).orElseThrow(()->new NotFoundException("Faculty profile not found"));
-        user.setEmail(normalized); f.setEmail(normalized); f.setContactNumber(contactNumber==null?null:contactNumber.trim());
-        users.save(user); faculty.save(f); return profile(p);
-    }
-
-    @Transactional
-    public void changePassword(String current,String next,String currentRefreshToken,SisUserDetails p) {
-        if(next==null||next.length()<8||!next.matches(".*[A-Za-z].*")||!next.matches(".*\\d.*"))
-            throw new BusinessRuleException("New password must be at least 8 characters and include a letter and number");
-        User user=users.findById(p.id()).orElseThrow(()->new NotFoundException("User not found"));
-        if(!passwordEncoder.matches(current,user.getPasswordHash())) throw new BusinessRuleException("Current password is incorrect");
-        user.setPasswordHash(passwordEncoder.encode(next)); users.save(user);
-        jdbc.update("update refresh_tokens set revoked_at=now() where user_id=? and token<>? and revoked_at is null",p.id(),currentRefreshToken==null?"":currentRefreshToken);
+        f.setEmail(normalized); f.setContactNumber(contactNumber==null?null:contactNumber.trim());
+        faculty.save(f); identitySync.synchronizeFaculty(f); return profile(p);
     }
 
     @Transactional(readOnly = true)

@@ -54,7 +54,10 @@ public class SecurityConfig {
                         .authenticationEntryPoint((request, response, exception) -> {
                             response.setStatus(HttpStatus.UNAUTHORIZED.value());
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            objectMapper.writeValue(response.getWriter(), ApiResponse.failure("Authentication required"));
+                            String code = (String) request.getAttribute("authenticationFailureCode");
+                            objectMapper.writeValue(response.getWriter(), code == null
+                                    ? ApiResponse.failure("AUTHENTICATION_REQUIRED", "Authentication required")
+                                    : ApiResponse.failure(code, "The session is expired or revoked"));
                         })
                         .accessDeniedHandler((request, response, exception) -> {
                             response.setStatus(HttpStatus.FORBIDDEN.value());

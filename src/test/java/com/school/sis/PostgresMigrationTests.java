@@ -47,8 +47,14 @@ class PostgresMigrationTests {
     @Test void allMigrationsApplyAndHibernateValidates() {
         Integer count = jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class);
         String latest = jdbc.queryForObject("select version from flyway_schema_history order by installed_rank desc limit 1", String.class);
-        assertThat(count).isEqualTo(22);
-        assertThat(latest).isEqualTo("22");
+        assertThat(count).isEqualTo(23);
+        assertThat(latest).isEqualTo("23");
+
+        assertThat(jdbc.queryForObject("select name from permissions where id=?::uuid", String.class,
+                "00000000-0000-0000-0000-000000000101")).isEqualTo("ACCOUNT_MANAGE");
+        assertThat(jdbc.queryForObject("select count(*) from permissions where name='RBAC_MANAGE'", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from roles where name='ACCOUNT_ADMIN'", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from user_roles ur join roles r on r.id=ur.role_id where r.name='ACCOUNT_ADMIN'", Integer.class)).isZero();
 
         Integer evaluationTables = jdbc.queryForObject("""
                 select count(*) from information_schema.tables
@@ -169,6 +175,35 @@ class PostgresMigrationTests {
                 "20000000-0000-0000-0000-000000000006", "20000000-0000-0000-0000-000000000004",
                 "20000000-0000-0000-0000-000000000005", 40, "DRAFT"))
                 .hasMessageContaining("ux_schedule_offering_open");
+    }
+
+    @Test void upgradesV22AccountsAndHashesLegacyRefreshTokensWithoutLosingIdentityMismatches() {
+        String schema = "account_upgrade_v22";
+        String schemaUrl = postgres.getJdbcUrl() + (postgres.getJdbcUrl().contains("?") ? "&" : "?")
+                + "currentSchema=" + schema + ",public";
+        DriverManagerDataSource upgradeDataSource = new DriverManagerDataSource(
+                schemaUrl, postgres.getUsername(), postgres.getPassword());
+        Flyway.configure().dataSource(upgradeDataSource).schemas(schema).defaultSchema(schema)
+                .target(MigrationVersion.fromVersion("22")).load().migrate();
+        JdbcTemplate upgrade = new JdbcTemplate(upgradeDataSource);
+        String rawToken = "legacy-refresh-token-that-must-not-remain-plaintext";
+        UUID tokenId = UUID.randomUUID();
+        upgrade.update("insert into refresh_tokens(id,token,user_id,expires_at) values (?,?,?::uuid,now()+interval '1 day')",
+                tokenId, rawToken, "00000000-0000-0000-0000-000000000301");
+        upgrade.update("update users set full_name='Preserved Legacy Name', must_change_password=true where id=?::uuid",
+                "00000000-0000-0000-0000-000000000301");
+
+        Flyway.configure().dataSource(upgradeDataSource).schemas(schema).defaultSchema(schema)
+                .target(MigrationVersion.LATEST).load().migrate();
+
+        String stored = upgrade.queryForObject("select token_hash from refresh_tokens where id=?", String.class, tokenId);
+        assertThat(stored).hasSize(64).isNotEqualTo(rawToken);
+        assertThat(upgrade.queryForObject("select encode(digest(?,'sha256'),'hex')", String.class, rawToken)).isEqualTo(stored);
+        assertThat(upgrade.queryForObject("select full_name from users where id=?::uuid", String.class,
+                "00000000-0000-0000-0000-000000000301")).isEqualTo("Preserved Legacy Name");
+        assertThat(upgrade.queryForObject("select temporary_password_expires_at from users where id=?::uuid", Object.class,
+                "00000000-0000-0000-0000-000000000301")).isNull();
+        assertThat(upgrade.queryForObject("select count(*) from audit_logs", Integer.class)).isNotNull();
     }
 
     @Test void competingResourceReservationsProduceExactlyOneSuccess() throws Exception {

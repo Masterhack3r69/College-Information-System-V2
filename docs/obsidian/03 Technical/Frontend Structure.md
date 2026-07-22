@@ -16,7 +16,7 @@
 - `/faculty/*` requires the faculty portal permission and linked faculty ID.
 - `/student/*` requires the student portal permission and linked student ID.
 
-Legacy top-level admin paths redirect under `/admin`. Student forced-password-change routing is enforced before other student pages.
+Legacy top-level admin paths redirect under `/admin`. Forced-password-change routing for every role is enforced through `/account/security` before any portal page.
 
 ## State, Forms, and Validation
 
@@ -34,16 +34,19 @@ Legacy top-level admin paths redirect under `/admin`. Student forced-password-ch
 
 Administrative links are filtered by permission; route guards also block direct navigation. Faculty and student shells provide portal-specific menus and optional portal switching.
 
+Users & Accounts is route-lazy and provides the unified directory, account detail, one-time credential acknowledgement, protected RBAC, and identity-conflict workspaces. Every shell links to the shared responsive Account Security center; the legacy student password route redirects and the faculty duplicate form was removed.
+
 The administrative header term selector is shared with enrollment and schedules. Finance and grade queues inherit it until a page-specific filter is selected.
 
 ## Current Limitations
 
 - The production build reports a main JavaScript chunk above 3 MB before gzip and warns about chunks over 500 kB.
 - Faculty attendance/content/report top-level routes redirect to classes.
-- Browser tests focus mainly on academic setup; current portal E2E coverage is limited.
+- Focused Users & Accounts browser coverage includes Super Admin, Account Admin, unauthorized, forced-change, login throttle, and 375 px security-center flows. Full seeded cross-role coverage remains incomplete.
 
 ## Related Notes
 
 - [[System Architecture]]
 - [[Authentication and Roles]]
 - [[Development Setup]]
+- [[Users and Accounts]]

@@ -1,10 +1,10 @@
 # Database Overview
 
-PostgreSQL 16 is the production/development database. Flyway migrations `V1` through `V22` are the physical schema and development-seed source of truth.
+PostgreSQL 16 is the production/development database. Flyway migrations `V1` through `V23` are the physical schema and development-seed source of truth.
 
 | Entity group | Purpose | Main relationships | Status |
 |---|---|---|---|
-| Users, roles, permissions, refresh tokens | Identity, RBAC, token lifecycle | Users ↔ roles ↔ permissions; user may link faculty/student | Implemented |
+| Users, roles, permissions, sessions, login rate limits | Identity, delegated RBAC, password/login protection, and session lifecycle | Users ↔ roles ↔ permissions; exclusive faculty/student link; session belongs to user | Implemented |
 | Departments, programs, courses, faculty | Academic master data | Programs/courses/faculty belong to departments | Implemented |
 | School years, semesters, curricula, sections | Academic structure and term placement | Curriculum belongs to program; sections reference curriculum and term | Implemented |
 | Class schedules, revised meetings, reservations, history, load policies | Plan and publish stable course offerings | Course, section, faculty, meeting room, term; exclusion-protected resources | Implemented |
@@ -41,6 +41,11 @@ PostgreSQL 16 is the production/development database. Flyway migrations `V1` thr
 - V20 adds elective groups, eligibility policies/approval snapshots, graduation audits/issues, and policy/audit permissions.
 - V21 adds meeting-level components/delivery/rooms, capacity profiles, history, resource reservations, scheduling permissions, and optimistic versions.
 - V22 adds term/faculty-type teaching-load policies.
+- V23 adds protected delegated account administration, user/role versions, password/login protection, SHA-256 stable sessions, security-version JWT invalidation, linked-identity conflict visibility, and supporting indexes.
+
+## V23 Authentication Summary
+
+See [[Authentication Data Dictionary]] for field-level details, [[Authentication Endpoints]] for API contracts, and [[ADR-005 Delegated Account Administration and Immediate Session Revocation]] for the security decision.
 
 ## V21–V22 Scheduling Summary
 
@@ -78,3 +83,5 @@ See [[Scheduling Data Dictionary]] for field-level detail and [[ADR-004 Schedule
 - [[Finance Data Dictionary]]
 - [[Academic Exceptions]]
 - [[Scheduling]]
+- [[Authentication Data Dictionary]]
+- [[Users and Accounts]]

@@ -2,11 +2,12 @@
 
 ## Current Status
 
-The College Student Information System is a working full-stack MVP under active development. [[Scheduling]] is operational through PostgreSQL Flyway V22 with stable schedule identity, meeting-level components/locations, controlled revisions, database-safe resource reservations, scoped views, teaching loads, term copy, and in-app history. Finance modernization is implemented through V17; enrollment and [[Academic Exceptions]] through V20. The clean backend suite passes 100 tests with no skips, the frontend production build passes, and a clean Docker database applied and Hibernate-validated V1–V22.
+The College Student Information System is a working full-stack MVP under active development. [[Users and Accounts]] is operational through PostgreSQL Flyway V23 with protected delegated administration, canonical linked identities, generated temporary credentials, persistent login protection, hashed stable sessions, and immediate revocation. [[Scheduling]] remains operational through V22; Finance modernization through V17; enrollment and [[Academic Exceptions]] through V20. The clean backend suite passes 108 tests with four local Testcontainers skips, direct Docker upgraded the persisted V20 database through V23, the frontend production build and targeted lint pass, and six focused account-security Playwright flows pass.
 
 ## Current Development Focus
 
 - Complete end-to-end verification across registrar, cashier, faculty, and student workflows.
+- Add a persisted `ACCOUNT_ADMIN` live browser account and define the later MFA/email-recovery security phase.
 - Extend the passing focused scheduling Playwright suite into a seeded live-stack multi-account run.
 - Add automated multi-thread PostgreSQL and browser regression coverage for [[Finance Modernization]].
 - Add automated cross-account academic-evaluation and concurrent final-seat confirmation coverage.
@@ -26,6 +27,7 @@ The College Student Information System is a working full-stack MVP under active 
 - [[Billing]]
 - [[Faculty Portal]]
 - [[Student Portal]]
+- [[Users and Accounts]]
 
 ## Partially Implemented Modules
 
@@ -36,14 +38,14 @@ The College Student Information System is a working full-stack MVP under active 
 
 ## Main Blockers
 
-- Testcontainers on Docker Desktop 29 requires API compatibility `-Dapi.version=1.44`; with it, V20 upgrade and reservation-race tests run successfully.
+- Local Testcontainers named-pipe discovery is unavailable in the latest run, so four PostgreSQL tests skip; direct persisted Docker migration and API smoke passed.
 - Existing Playwright artifacts record academic-setup failures and require a fresh configured E2E run to determine current status.
-- Frontend lint currently reports 42 errors and 9 warnings.
+- Changed Users & Accounts files pass targeted lint; repo-wide legacy lint debt remains to be cleared.
 - Default development credentials and fallback JWT/database values must not be used in production.
 
 ## MVP Completion Summary
 
-Core records, setup, operational scheduling, hardened enrollment, academic exceptions/credits, controlled finance, gradebook, portals, report, audit, and user administration exist. Remaining MVP work is primarily institutional policy configuration, integrated cross-role automation, deferred admissions/compliance modules, and security/deployment hardening.
+Core records, setup, operational scheduling, hardened enrollment, academic exceptions/credits, controlled finance, gradebook, portals, reports, audit, and protected account administration exist. Remaining MVP work is primarily institutional policy configuration, integrated cross-role automation, deferred admissions/compliance modules, MFA/recovery policy, and deployment hardening.
 
 ## Important Notes
 

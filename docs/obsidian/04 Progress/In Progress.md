@@ -1,5 +1,26 @@
 # In Progress
 
+## Users and Accounts Security Upgrade
+
+### Completed
+
+- Non-destructive V23 account/session/RBAC migration with preserved accounts, links, assignments, audits, mismatches, and refresh compatibility.
+- Protected Account Admin delegation, role escalation/self/last-Super-Admin invariants, safe role catalog, reasons, optimistic versions, and canonical identity synchronization/reconciliation.
+- Generated expiring temporary credentials, persistent login lock/IP throttle, stable hashed sessions, session/security-version JWT checks, immediate revocation, and cleanup.
+- Unified directory/detail/RBAC/conflict workspaces and shared responsive Account Security center.
+- 108-test backend gate, production build, targeted changed-file lint, six focused Playwright flows, live Docker V20→V23 migration, authenticated API smoke, and desktop/375 px browser QA.
+
+### Future Security Phase
+
+- Define email recovery and institution-approved MFA policy.
+- Add a persisted `ACCOUNT_ADMIN` browser account for full live-stack delegated-administration automation.
+
+### Related
+
+- [[Users and Accounts]]
+- [[Users and Accounts Test Cases]]
+- [[ADR-005 Delegated Account Administration and Immediate Session Revocation]]
+
 ## Scheduling Operational Upgrade
 
 ### Completed
@@ -25,7 +46,7 @@
 
 ### Current State
 
-The backend and frontend production gates pass for the scheduling slice, and the development schema is at V22. Focused academic-exception and scheduling desktop/mobile browser checks pass; full cross-account lifecycle automation remains incomplete.
+The backend and frontend production gates pass, and the development schema is at V23. Focused account-security, academic-exception, and scheduling desktop/mobile browser checks pass; full cross-account lifecycle automation remains incomplete.
 
 ### Completed
 
@@ -39,7 +60,7 @@ The backend and frontend production gates pass for the scheduling slice, and the
 - Add end-to-end coverage for Registrar, Dean, Program Head, cashier, faculty, and student lifecycle boundaries.
 - Add an automated concurrent final-seat confirmation test.
 - Add multi-thread PostgreSQL Finance tests and a full cross-role browser suite.
-- Resolve the current ESLint errors and warnings.
+- Resolve remaining repo-wide legacy ESLint errors and warnings; changed Users & Accounts files pass targeted lint.
 
 ### Blockers
 

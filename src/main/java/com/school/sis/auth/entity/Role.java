@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -26,6 +27,10 @@ public class Role extends AuditableEntity {
 
     @Column(nullable = false)
     private String description;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -53,6 +58,8 @@ public class Role extends AuditableEntity {
     public Set<Permission> getPermissions() {
         return permissions;
     }
+
+    public long getVersion() { return version; }
 
     public void setPermissions(Set<Permission> permissions) {
         this.permissions = permissions;

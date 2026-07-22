@@ -34,8 +34,21 @@ import type {
 import { useAuth } from "@/lib/auth"
 import { useAcademicTerm } from "@/lib/academic-term-context"
 
-type EnrollmentHistoryEntry = { id: string; fromStatus?: string; toStatus: string; remarks?: string; changedAt: string }
-type CancellationReadiness = { ready: boolean; financeResolved: boolean; hasAttendance: boolean; hasGrades: boolean; hasLockedAcademicRecords: boolean; blockers: { code: string; message: string }[] }
+type EnrollmentHistoryEntry = {
+  id: string
+  fromStatus?: string
+  toStatus: string
+  remarks?: string
+  changedAt: string
+}
+type CancellationReadiness = {
+  ready: boolean
+  financeResolved: boolean
+  hasAttendance: boolean
+  hasGrades: boolean
+  hasLockedAcademicRecords: boolean
+  blockers: { code: string; message: string }[]
+}
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -160,7 +173,9 @@ export function EnrollmentPage() {
   const [provisionedCredentials, setProvisionedCredentials] = useState<{
     username: string
     initialPassword: string
+    expiresAt?: string
   } | null>(null)
+  const [credentialsAcknowledged, setCredentialsAcknowledged] = useState(false)
 
   // Queries for active builder
   const students = useQuery({
@@ -306,6 +321,7 @@ export function EnrollmentPage() {
           created: boolean
           username: string
           initialPassword?: string
+          expiresAt?: string
           passwordChangeRequired: boolean
         }
       }>(`/enrollments/${enrollment!.id}/confirm`, { method: "POST" }),
@@ -315,7 +331,9 @@ export function EnrollmentPage() {
         setProvisionedCredentials({
           username: result.account.username,
           initialPassword: result.account.initialPassword,
+          expiresAt: result.account.expiresAt,
         })
+        setCredentialsAcknowledged(false)
       }
       void refreshEnrollment()
     },
@@ -373,13 +391,17 @@ export function EnrollmentPage() {
 
   const enrollmentHistory = useQuery({
     queryKey: ["enrollment-history", inspectingId],
-    queryFn: () => api<EnrollmentHistoryEntry[]>(`/enrollments/${inspectingId}/history`),
+    queryFn: () =>
+      api<EnrollmentHistoryEntry[]>(`/enrollments/${inspectingId}/history`),
     enabled: !!inspectingId,
   })
 
   const cancellationReadiness = useQuery({
     queryKey: ["enrollment-cancellation-readiness", cancellingId],
-    queryFn: () => api<CancellationReadiness>(`/enrollments/${cancellingId}/cancellation-readiness`),
+    queryFn: () =>
+      api<CancellationReadiness>(
+        `/enrollments/${cancellingId}/cancellation-readiness`
+      ),
     enabled: !!cancellingId,
   })
 
@@ -395,21 +417,43 @@ export function EnrollmentPage() {
       void qc.invalidateQueries({ queryKey: ["enrollments"] })
       void qc.invalidateQueries({ queryKey: ["enrollment-detail"] })
       void qc.invalidateQueries({ queryKey: ["enrollment-history"] })
-      void qc.invalidateQueries({ queryKey: ["enrollment-cancellation-readiness"] })
+      void qc.invalidateQueries({
+        queryKey: ["enrollment-cancellation-readiness"],
+      })
       void refreshEnrollment()
     },
     onError: notify,
   })
 
   const returnToDraft = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => api<Enrollment>(`/enrollments/${id}/return-to-draft`, { method: "POST", body: JSON.stringify({ reason }) }),
-    onSuccess: async () => { toast.success("Enrollment returned to draft"); setReturnReason(""); await Promise.all([qc.invalidateQueries({ queryKey: ["enrollments"] }), qc.invalidateQueries({ queryKey: ["enrollment-detail"] }), qc.invalidateQueries({ queryKey: ["enrollment-history"] })]) },
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api<Enrollment>(`/enrollments/${id}/return-to-draft`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }),
+    onSuccess: async () => {
+      toast.success("Enrollment returned to draft")
+      setReturnReason("")
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["enrollments"] }),
+        qc.invalidateQueries({ queryKey: ["enrollment-detail"] }),
+        qc.invalidateQueries({ queryKey: ["enrollment-history"] }),
+      ])
+    },
     onError: notify,
   })
 
   const approveEligibility = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => api(`/enrollments/${id}/eligibility-approval`, { method: "POST", body: JSON.stringify({ reason }) }),
-    onSuccess: async () => { toast.success("Enrollment eligibility approved"); setApprovalReason(""); await qc.invalidateQueries({ queryKey: ["enrollment-detail"] }) },
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api(`/enrollments/${id}/eligibility-approval`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }),
+    onSuccess: async () => {
+      toast.success("Enrollment eligibility approved")
+      setApprovalReason("")
+      await qc.invalidateQueries({ queryKey: ["enrollment-detail"] })
+    },
     onError: notify,
   })
 
@@ -502,7 +546,10 @@ export function EnrollmentPage() {
                 placeholder="Search student number or name"
               />
             </div>
-            <Select value={yearId} onValueChange={(value) => academicTerm.setTerm(value, semesterId)}>
+            <Select
+              value={yearId}
+              onValueChange={(value) => academicTerm.setTerm(value, semesterId)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="School year" />
               </SelectTrigger>
@@ -516,7 +563,10 @@ export function EnrollmentPage() {
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <Select value={semesterId} onValueChange={(value) => academicTerm.setTerm(yearId, value)}>
+            <Select
+              value={semesterId}
+              onValueChange={(value) => academicTerm.setTerm(yearId, value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Semester" />
               </SelectTrigger>
@@ -887,7 +937,10 @@ export function EnrollmentPage() {
                                 size="sm"
                                 onClick={() => {
                                   setSelectedId(item.studentId)
-                                  academicTerm.setTerm(item.schoolYearId, item.semesterId)
+                                  academicTerm.setTerm(
+                                    item.schoolYearId,
+                                    item.semesterId
+                                  )
                                   setYearLevelOverride(item.yearLevel)
                                   setSectionChoice(
                                     item.sectionId ?? "__mixed__"
@@ -987,7 +1040,34 @@ export function EnrollmentPage() {
               Detailed view of student enrollment record and class schedules.
             </DialogDescription>
           </DialogHeader>
-          {cancellationReadiness.isLoading ? <div className="flex items-center gap-2 rounded-md border p-3 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Checking Finance and academic activity…</div> : cancellationReadiness.data && !cancellationReadiness.data.ready ? <Alert variant="destructive"><Ban /><AlertTitle>Cancellation is blocked</AlertTitle><AlertDescription><ul className="mt-2 list-disc space-y-1 pl-5">{cancellationReadiness.data.blockers.map((blocker) => <li key={blocker.code}>{blocker.message}</li>)}</ul></AlertDescription></Alert> : cancellationReadiness.data?.ready ? <Alert><CheckCircle2 /><AlertTitle>Ready to cancel</AlertTitle><AlertDescription>No attendance, grade, locked academic, or unresolved Finance activity was found.</AlertDescription></Alert> : null}
+          {cancellationReadiness.isLoading ? (
+            <div className="flex items-center gap-2 rounded-md border p-3 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Checking Finance and academic activity…
+            </div>
+          ) : cancellationReadiness.data &&
+            !cancellationReadiness.data.ready ? (
+            <Alert variant="destructive">
+              <Ban />
+              <AlertTitle>Cancellation is blocked</AlertTitle>
+              <AlertDescription>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {cancellationReadiness.data.blockers.map((blocker) => (
+                    <li key={blocker.code}>{blocker.message}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          ) : cancellationReadiness.data?.ready ? (
+            <Alert>
+              <CheckCircle2 />
+              <AlertTitle>Ready to cancel</AlertTitle>
+              <AlertDescription>
+                No attendance, grade, locked academic, or unresolved Finance
+                activity was found.
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
           {inspectingEnrollment.isLoading ? (
             <div className="flex items-center justify-center p-8">
@@ -1150,19 +1230,109 @@ export function EnrollmentPage() {
               </section>
 
               <section className="rounded-lg border bg-slate-50/50 p-4">
-                <h3 className="mb-3 text-sm font-semibold text-[#0b1f3a]">Status History</h3>
-                <div className="space-y-4">{enrollmentHistory.data?.map((entry) => (
-                  <div key={entry.id} className="relative pb-2 pl-6 before:absolute before:top-2 before:bottom-0 before:left-2 before:w-0.5 before:bg-slate-200 last:before:hidden">
-                    <div className="absolute top-1 left-0 flex h-4 w-4 items-center justify-center rounded-full border border-[#0f7d82] bg-white"><div className="h-1.5 w-1.5 rounded-full bg-[#0f7d82]" /></div>
-                    <div className="flex flex-wrap items-center justify-between gap-2"><div className="text-xs font-semibold text-slate-700">{entry.toStatus.replaceAll("_", " ")}</div><time className="text-[10px] text-muted-foreground">{new Date(entry.changedAt).toLocaleString()}</time></div>
-                    <div className="text-xs text-muted-foreground">{entry.remarks || "No remarks recorded"}</div>
-                  </div>
-                ))}{!enrollmentHistory.isLoading && !enrollmentHistory.data?.length ? <p className="text-xs text-muted-foreground">No history entries are available.</p> : null}</div>
+                <h3 className="mb-3 text-sm font-semibold text-[#0b1f3a]">
+                  Status History
+                </h3>
+                <div className="space-y-4">
+                  {enrollmentHistory.data?.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="relative pb-2 pl-6 before:absolute before:top-2 before:bottom-0 before:left-2 before:w-0.5 before:bg-slate-200 last:before:hidden"
+                    >
+                      <div className="absolute top-1 left-0 flex h-4 w-4 items-center justify-center rounded-full border border-[#0f7d82] bg-white">
+                        <div className="h-1.5 w-1.5 rounded-full bg-[#0f7d82]" />
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-xs font-semibold text-slate-700">
+                          {entry.toStatus.replaceAll("_", " ")}
+                        </div>
+                        <time className="text-[10px] text-muted-foreground">
+                          {new Date(entry.changedAt).toLocaleString()}
+                        </time>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {entry.remarks || "No remarks recorded"}
+                      </div>
+                    </div>
+                  ))}
+                  {!enrollmentHistory.isLoading &&
+                  !enrollmentHistory.data?.length ? (
+                    <p className="text-xs text-muted-foreground">
+                      No history entries are available.
+                    </p>
+                  ) : null}
+                </div>
               </section>
 
-              {inspectingEnrollment.data.status === "SUBMITTED" ? <section className="rounded-lg border p-4"><h3 className="text-sm font-semibold">Return for correction</h3><p className="mt-1 text-xs text-muted-foreground">Return the submitted load to the student with a reason.</p><div className="mt-3 flex gap-2"><Input value={returnReason} onChange={(event) => setReturnReason(event.target.value)} placeholder="Reason for returning to draft" /><Button variant="outline" disabled={!returnReason.trim() || returnToDraft.isPending} onClick={() => returnToDraft.mutate({ id: inspectingEnrollment.data.id, reason: returnReason })}><Undo2 />Return to draft</Button></div></section> : null}
+              {inspectingEnrollment.data.status === "SUBMITTED" ? (
+                <section className="rounded-lg border p-4">
+                  <h3 className="text-sm font-semibold">
+                    Return for correction
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Return the submitted load to the student with a reason.
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Input
+                      value={returnReason}
+                      onChange={(event) => setReturnReason(event.target.value)}
+                      placeholder="Reason for returning to draft"
+                    />
+                    <Button
+                      variant="outline"
+                      disabled={!returnReason.trim() || returnToDraft.isPending}
+                      onClick={() =>
+                        returnToDraft.mutate({
+                          id: inspectingEnrollment.data.id,
+                          reason: returnReason,
+                        })
+                      }
+                    >
+                      <Undo2 />
+                      Return to draft
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
 
-              {[...(inspectingEnrollment.data.validation?.blockingIssues ?? []), ...(inspectingEnrollment.data.validation?.warnings ?? [])].some((issue) => issue.code === "ACADEMIC_POLICY_APPROVAL_REQUIRED") ? <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-4"><h3 className="flex items-center gap-2 text-sm font-semibold"><KeyRound className="size-4" />Academic-policy approval</h3><p className="mt-1 text-xs text-muted-foreground">Record Registrar authorization before confirmation.</p><div className="mt-3 flex gap-2"><Input value={approvalReason} onChange={(event) => setApprovalReason(event.target.value)} placeholder="Approval reason and conditions" /><Button disabled={!approvalReason.trim() || approveEligibility.isPending} onClick={() => approveEligibility.mutate({ id: inspectingEnrollment.data.id, reason: approvalReason })}>Approve eligibility</Button></div></section> : null}
+              {[
+                ...(inspectingEnrollment.data.validation?.blockingIssues ?? []),
+                ...(inspectingEnrollment.data.validation?.warnings ?? []),
+              ].some(
+                (issue) => issue.code === "ACADEMIC_POLICY_APPROVAL_REQUIRED"
+              ) ? (
+                <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold">
+                    <KeyRound className="size-4" />
+                    Academic-policy approval
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Record Registrar authorization before confirmation.
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Input
+                      value={approvalReason}
+                      onChange={(event) =>
+                        setApprovalReason(event.target.value)
+                      }
+                      placeholder="Approval reason and conditions"
+                    />
+                    <Button
+                      disabled={
+                        !approvalReason.trim() || approveEligibility.isPending
+                      }
+                      onClick={() =>
+                        approveEligibility.mutate({
+                          id: inspectingEnrollment.data.id,
+                          reason: approvalReason,
+                        })
+                      }
+                    >
+                      Approve eligibility
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
 
               {/* Download buttons (only if status is CONFIRMED) */}
               {inspectingEnrollment.data.status === "CONFIRMED" && (
@@ -1209,9 +1379,18 @@ export function EnrollmentPage() {
 
       <Dialog
         open={!!provisionedCredentials}
-        onOpenChange={(open) => !open && setProvisionedCredentials(null)}
+        onOpenChange={(open) => {
+          if (!open && credentialsAcknowledged) setProvisionedCredentials(null)
+        }}
       >
-        <DialogContent>
+        <DialogContent
+          onEscapeKeyDown={(event) =>
+            !credentialsAcknowledged && event.preventDefault()
+          }
+          onInteractOutside={(event) =>
+            !credentialsAcknowledged && event.preventDefault()
+          }
+        >
           <DialogHeader>
             <DialogTitle>Student portal account created</DialogTitle>
             <DialogDescription>
@@ -1228,9 +1407,31 @@ export function EnrollmentPage() {
               <span className="text-muted-foreground">Initial password</span>
               <code>{provisionedCredentials?.initialPassword}</code>
             </div>
+            {provisionedCredentials?.expiresAt ? (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Expires</span>
+                <span>
+                  {new Date(provisionedCredentials.expiresAt).toLocaleString()}
+                </span>
+              </div>
+            ) : null}
           </div>
+          <label className="flex items-start gap-3 text-sm">
+            <Checkbox
+              checked={credentialsAcknowledged}
+              onCheckedChange={(value) =>
+                setCredentialsAcknowledged(value === true)
+              }
+            />
+            <span>
+              I copied the credential and understand it cannot be shown again.
+            </span>
+          </label>
           <DialogFooter>
-            <Button onClick={() => setProvisionedCredentials(null)}>
+            <Button
+              disabled={!credentialsAcknowledged}
+              onClick={() => setProvisionedCredentials(null)}
+            >
               I have recorded it
             </Button>
           </DialogFooter>
@@ -1274,7 +1475,11 @@ export function EnrollmentPage() {
             </Button>
             <Button
               variant="destructive"
-              disabled={!cancelReason.trim() || cancel.isPending || !cancellationReadiness.data?.ready}
+              disabled={
+                !cancelReason.trim() ||
+                cancel.isPending ||
+                !cancellationReadiness.data?.ready
+              }
               onClick={() => {
                 if (cancellingId && cancelReason.trim()) {
                   cancel.mutate(

@@ -2,6 +2,9 @@ package com.school.sis.student.portal;
 
 import com.school.sis.academic.dto.AcademicPlanResponse;
 import com.school.sis.auth.security.SisUserDetails;
+import com.school.sis.auth.dto.AuthResponse;
+import com.school.sis.auth.dto.PasswordChangeRequest;
+import com.school.sis.auth.service.AuthService;
 import com.school.sis.common.response.ApiResponse;
 import com.school.sis.enrollment.dto.EnrollmentResponse;
 import com.school.sis.report.service.ReportService;
@@ -16,13 +19,13 @@ import java.util.*;
 
 @RestController @RequestMapping("/api/v1/student/me") @PreAuthorize("hasAuthority('STUDENT_PORTAL_ACCESS')")
 public class StudentPortalController {
-    private final StudentPortalService service; private final ReportService reports;
-    public StudentPortalController(StudentPortalService service,ReportService reports){this.service=service;this.reports=reports;}
+    private final StudentPortalService service; private final ReportService reports; private final AuthService auth;
+    public StudentPortalController(StudentPortalService service,ReportService reports,AuthService auth){this.service=service;this.reports=reports;this.auth=auth;}
     @GetMapping("/dashboard") public ApiResponse<Map<String,Object>> dashboard(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Student dashboard retrieved",service.dashboard(p));}
     @GetMapping("/term") public ApiResponse<Map<String,Object>> term(){return ApiResponse.success("Student portal term retrieved",service.term());}
     @GetMapping("/profile") @PreAuthorize("hasAuthority('STUDENT_PROFILE_SELF')") public ApiResponse<Map<String,Object>> profile(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Student profile retrieved",service.profile(p));}
     @PutMapping("/profile") @PreAuthorize("hasAuthority('STUDENT_PROFILE_SELF')") public ApiResponse<Map<String,Object>> profile(@Valid @RequestBody ProfileRequest r,@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Student profile updated",service.updateProfile(new StudentPortalService.ProfileUpdate(r.email(),r.mobileNumber(),r.telephoneNumber(),r.currentAddress(),r.emergencyContactName(),r.emergencyContactNumber(),r.emergencyContactRelationship(),r.emergencyContactAddress()),p));}
-    @PutMapping("/password") public ApiResponse<Void> password(@Valid @RequestBody PasswordRequest r,@AuthenticationPrincipal SisUserDetails p){service.changePassword(r.currentPassword(),r.newPassword(),r.refreshToken(),p);return ApiResponse.success("Password changed");}
+    @PutMapping("/password") public ApiResponse<AuthResponse> password(@Valid @RequestBody PasswordRequest r,@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Password changed",auth.changePassword(p,new PasswordChangeRequest(r.currentPassword(),r.newPassword())));}
     @GetMapping("/enrollment") @PreAuthorize("hasAuthority('STUDENT_ENROLLMENT_SELF')") public ApiResponse<Map<String,Object>> enrollment(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Enrollment retrieved",service.currentEnrollment(p));}
     @GetMapping("/available-classes") @PreAuthorize("hasAuthority('STUDENT_ENROLLMENT_SELF')") public ApiResponse<List<Map<String,Object>>> available(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Available classes retrieved",service.availableClasses(p));}
     @PostMapping("/enrollment") @PreAuthorize("hasAuthority('STUDENT_ENROLLMENT_SELF')") public ApiResponse<EnrollmentResponse> draft(@Valid @RequestBody DraftRequest r,@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Enrollment draft created",service.createDraft(new StudentPortalService.DraftRequest(r.yearLevel(),r.sectionId(),r.remarks()),p));}

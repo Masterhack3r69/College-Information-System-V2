@@ -1,5 +1,31 @@
 # Change Log
 
+## 2026-07-22
+
+### Added
+
+- V23 protected delegated account administration with `ACCOUNT_MANAGE`, `RBAC_MANAGE`, migration-managed `ACCOUNT_ADMIN`, optimistic user/role versions, persistent login protection, and linked-identity reconciliation.
+- SHA-256 stable session records with user-agent/IP evidence, seven-day idle/30-day absolute expiry, session/security-version access JWT claims, immediate revocation, and scheduled retention cleanup.
+- Server-generated 20-character one-time credentials, 24/72-hour expiry, shared `/account/security`, unified directory/detail workspaces, protected RBAC, identity conflicts, and login-throttle countdowns.
+- Account-security backend regressions and six focused Super Admin/Account Admin/unauthorized/student browser tests.
+
+### Changed
+
+- `USER_MANAGE` is renamed in place to `ACCOUNT_MANAGE`; full role/permission APIs now require `RBAC_MANAGE`.
+- Faculty/student records are authoritative for linked account name/email, and linked fields are read-only in Users & Accounts.
+- User-chosen passwords are standardized at 12–128 characters with a letter and number; all forced-change users route through the shared security center.
+- The shadcn sidebar inset and security center now contain wide content without page-level horizontal overflow.
+
+### Fixed
+
+- Self-deactivation/demotion, last-Super-Admin removal, protected-role escalation, stale account/role overwrites, plaintext refresh storage, lingering access after revocation, and rollback-lost failed-login audits.
+- V20 rollout was unblocked by archiving 94 legacy active schedules belonging to inactive school years after a full pre-upgrade backup; no schedule rows or downstream links were deleted.
+
+### Documentation
+
+- Added [[Users and Accounts]], [[Authentication Data Dictionary]], [[Authentication Endpoints]], [[Users and Accounts Test Cases]], and [[ADR-005 Delegated Account Administration and Immediate Session Revocation]].
+- Updated [[Authentication and Roles]], [[User Roles]], [[Database Overview]], [[Backend Structure]], [[Frontend Structure]], [[Implemented Features]], [[In Progress]], and [[MVP Dashboard]].
+
 ## 2026-07-21
 
 ### Added

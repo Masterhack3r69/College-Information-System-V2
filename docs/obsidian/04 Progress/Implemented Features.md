@@ -2,9 +2,10 @@
 
 ## Authentication and Administration
 
-- [x] JWT login, refresh rotation, logout, and current-user context
-- [x] BCrypt password hashing and forced student password change
-- [x] Users, roles, permission assignment, status, password reset, and faculty linking
+- [x] Session-bound JWT login, SHA-256 refresh rotation, logout, current-user context, and immediate revocation
+- [x] BCrypt passwords, 12–128 policy, generated expiring temporary credentials, and forced shared security-center change
+- [x] Unified account directory, protected delegated account administration, RBAC separation, status/reset/unlock/session/activity, and linked identity reconciliation
+- [x] Persistent known-identity/IP login protection and durable failed-login audit
 - [x] Permission-aware frontend routing plus backend method authorization
 - [x] Searchable audit logs
 
@@ -46,9 +47,10 @@
 ## Reports and Tests
 
 - [x] PDF student, enrollment, assessment, receipt, class, grade-sheet, and grade-slip reports
-- [x] Backend unit/integration suite: 100 passed, including PostgreSQL migration/backfill and concurrent reservation tests
+- [x] Backend unit/integration suite: 108 passed, plus direct PostgreSQL V20→V23 migration/API smoke when four Testcontainers tests were locally skipped
 - [x] Frontend TypeScript production build
 - [x] PostgreSQL V20→V22 scheduling backfill and competing-reservation transaction tests
+- [x] Focused Users & Accounts Playwright suite: 6 passed, including 375 px security center
 
 ## Related Notes
 
@@ -56,3 +58,4 @@
 - [[MVP Completion Checklist]]
 - [[Known Issues]]
 - [[Scheduling]]
+- [[Users and Accounts]]

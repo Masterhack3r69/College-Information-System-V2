@@ -13,6 +13,7 @@ import com.school.sis.setup.repository.DepartmentRepository;
 import com.school.sis.setup.repository.FacultyRepository;
 import com.school.sis.schedule.repository.ClassScheduleRepository;
 import com.school.sis.common.exception.BusinessRuleException;
+import com.school.sis.auth.service.LinkedIdentitySyncService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,13 +27,16 @@ public class FacultyService {
     private final DepartmentRepository departmentRepository;
     private final AuditService auditService;
     private final ClassScheduleRepository classScheduleRepository;
+    private final LinkedIdentitySyncService identitySync;
 
     public FacultyService(FacultyRepository facultyRepository, DepartmentRepository departmentRepository,
-                          AuditService auditService, ClassScheduleRepository classScheduleRepository) {
+                          AuditService auditService, ClassScheduleRepository classScheduleRepository,
+                          LinkedIdentitySyncService identitySync) {
         this.facultyRepository = facultyRepository;
         this.departmentRepository = departmentRepository;
         this.auditService = auditService;
         this.classScheduleRepository = classScheduleRepository;
+        this.identitySync = identitySync;
     }
 
     @Transactional(readOnly = true)
@@ -62,6 +66,7 @@ public class FacultyService {
         Faculty faculty = find(id);
         FacultyResponse before = toResponse(faculty);
         apply(faculty, request);
+        identitySync.synchronizeFaculty(faculty);
         FacultyResponse after = toResponse(faculty);
         auditService.log("FACULTY_UPDATED", AuditModule.ACADEMIC_SETUP, "Faculty", id, before, after);
         return after;

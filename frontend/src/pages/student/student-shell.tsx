@@ -30,6 +30,7 @@ import {
   ClipboardList,
   FileText,
   GraduationCap,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   ShieldCheck,
@@ -110,6 +111,18 @@ export function StudentShell() {
                 <Link to="/student/profile">
                   <UserRound />
                   <span>Profile & Security</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                tooltip="Account Security"
+                className="h-11"
+              >
+                <Link to="/account/security">
+                  <KeyRound />
+                  <span>Account Security</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

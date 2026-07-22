@@ -1,6 +1,9 @@
 package com.school.sis.faculty;
 
 import com.school.sis.auth.security.SisUserDetails;
+import com.school.sis.auth.dto.AuthResponse;
+import com.school.sis.auth.dto.PasswordChangeRequest;
+import com.school.sis.auth.service.AuthService;
 import com.school.sis.common.response.ApiResponse;
 import com.school.sis.grade.dto.GradebookRequests;
 import com.school.sis.grade.dto.GradebookResponse;
@@ -28,7 +31,8 @@ public class FacultyPortalController {
     private final FacultyPortalService service;
     private final FacultyPortalAccess access;
     private final GradebookService gradebooks;
-    public FacultyPortalController(FacultyPortalService service, FacultyPortalAccess access, GradebookService gradebooks){this.service=service;this.access=access;this.gradebooks=gradebooks;}
+    private final AuthService auth;
+    public FacultyPortalController(FacultyPortalService service, FacultyPortalAccess access, GradebookService gradebooks,AuthService auth){this.service=service;this.access=access;this.gradebooks=gradebooks;this.auth=auth;}
 
     @GetMapping("/dashboard") public ApiResponse<Map<String,Object>> dashboard(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Faculty dashboard retrieved",service.dashboard(p));}
     @GetMapping("/classes") public ApiResponse<List<Map<String,Object>>> classes(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Assigned classes retrieved",service.classes(p));}
@@ -39,7 +43,7 @@ public class FacultyPortalController {
     @GetMapping("/schedule/changes") public ApiResponse<List<Map<String,Object>>> scheduleChanges(@RequestParam UUID schoolYearId,@RequestParam UUID semesterId,@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Schedule changes retrieved",service.scheduleChanges(schoolYearId,semesterId,p));}
     @GetMapping("/profile") @PreAuthorize("hasAuthority('PROFILE_SELF_MANAGE')") public ApiResponse<Map<String,Object>> profile(@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Profile retrieved",service.profile(p));}
     @PutMapping("/profile") @PreAuthorize("hasAuthority('PROFILE_SELF_MANAGE')") public ApiResponse<Map<String,Object>> profile(@Valid @RequestBody ProfileRequest r,@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Profile updated",service.updateProfile(r.email(),r.contactNumber(),p));}
-    @PutMapping("/password") @PreAuthorize("hasAuthority('PROFILE_SELF_MANAGE')") public ApiResponse<Void> password(@Valid @RequestBody PasswordRequest r,@AuthenticationPrincipal SisUserDetails p){service.changePassword(r.currentPassword(),r.newPassword(),r.refreshToken(),p);return ApiResponse.success("Password changed");}
+    @PutMapping("/password") @PreAuthorize("hasAuthority('PROFILE_SELF_MANAGE')") public ApiResponse<AuthResponse> password(@Valid @RequestBody PasswordRequest r,@AuthenticationPrincipal SisUserDetails p){return ApiResponse.success("Password changed",auth.changePassword(p,new PasswordChangeRequest(r.currentPassword(),r.newPassword())));}
 
     @GetMapping("/classes/{id}/gradebook") public ApiResponse<GradebookResponse> gradebook(@PathVariable UUID id,@AuthenticationPrincipal SisUserDetails p){access.assigned(id,p);return ApiResponse.success("Gradebook retrieved",gradebooks.get(id,p));}
     @PostMapping("/classes/{id}/gradebook/initialize") @PreAuthorize("hasAuthority('GRADE_ENCODE')") public ApiResponse<GradebookResponse> initialize(@PathVariable UUID id,@Valid @RequestBody GradebookRequests.Initialize r,@AuthenticationPrincipal SisUserDetails p){access.assigned(id,p);return ApiResponse.success("Gradebook initialized",gradebooks.initialize(id,r.templateId(),p));}

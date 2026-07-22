@@ -43,7 +43,7 @@ Provision student account → force password change → enter portal → use ena
 
 ## Frontend Implementation
 
-Routes under `/student`: dashboard, enrollment, schedule, academics, finance, announcements, documents/requests, profile, and `/student/account/password`. Registrar administration uses `/admin/student-portal`.
+Routes under `/student`: dashboard, enrollment, schedule, academics, finance, announcements, documents/requests, and profile. Shared credential/session management uses `/account/security`; `/student/account/password` redirects there. Registrar administration uses `/admin/student-portal`.
 
 ## Backend Implementation
 
@@ -74,3 +74,4 @@ Finance receipt: `GET /api/v1/student/me/payments/{paymentId}/receipt`.
 - [[Authentication and Roles]]
 - [[Academic Exceptions]]
 - [[Scheduling]]
+- [[Users and Accounts]]

@@ -26,8 +26,18 @@ class UserAdministrationSecurityTests {
         mockMvc.perform(get("/api/v1/users")).andExpect(status().isForbidden());
     }
 
-    @Test @WithMockUser(authorities = "USER_MANAGE")
+    @Test @WithMockUser(authorities = "ACCOUNT_MANAGE")
     void userManagerCanListUsers() throws Exception {
         mockMvc.perform(get("/api/v1/users")).andExpect(status().isOk());
+    }
+
+    @Test @WithMockUser(authorities = "ACCOUNT_MANAGE")
+    void accountManagerCannotOpenFullRbacCatalog() throws Exception {
+        mockMvc.perform(get("/api/v1/roles")).andExpect(status().isForbidden());
+    }
+
+    @Test @WithMockUser(authorities = "RBAC_MANAGE")
+    void rbacManagerCanOpenFullRoleCatalog() throws Exception {
+        mockMvc.perform(get("/api/v1/roles")).andExpect(status().isOk());
     }
 }

@@ -75,16 +75,17 @@
 ## Security
 
 - [x] Stateless JWT authentication, permission checks, and ownership helpers.
-- [ ] Add production HTTPS, secret management, rate limiting decision, and security review.
+- [x] Add persistent account/IP login protection and audited administrative unlock.
+- [ ] Add production HTTPS, secret management, MFA/recovery policy, and production security review.
 
 ## Testing
 
-- [x] Backend suite passes: 100 tests, 0 failures/errors/skips, including Testcontainers PostgreSQL coverage.
+- [x] Backend suite passes: 108 tests, 0 failures/errors, with four local Testcontainers skips covered by direct Docker V20→V23 migration/API smoke.
 - [x] Frontend production build passes.
-- [ ] Fix frontend lint: 42 errors and 9 warnings in the latest run.
-- [x] Apply and validate Flyway V1–V22 against the live PostgreSQL 16 Docker Compose database.
-- [x] Run local Testcontainers on Docker Desktop 29 with `-Dapi.version=1.44`.
-- [x] Run focused desktop and 375 px browser checks for enrollment academic and scheduling surfaces with no console errors.
+- [ ] Clear remaining repo-wide legacy lint debt; changed Users & Accounts files pass targeted ESLint.
+- [x] Apply and validate Flyway V1–V23 against the live PostgreSQL 16 Docker Compose database.
+- [ ] Restore local Testcontainers named-pipe discovery; direct Docker migration evidence currently covers the skipped tests.
+- [x] Run focused desktop and 375 px browser checks for enrollment, academic, scheduling, and account-security surfaces with no console errors.
 - [ ] Run and stabilize full Playwright suite.
 
 ## Deployment

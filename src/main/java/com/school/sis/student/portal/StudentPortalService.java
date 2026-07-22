@@ -6,6 +6,7 @@ import com.school.sis.audit.service.AuditService;
 import com.school.sis.auth.entity.User;
 import com.school.sis.auth.repository.UserRepository;
 import com.school.sis.auth.security.SisUserDetails;
+import com.school.sis.auth.service.LinkedIdentitySyncService;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.enrollment.dto.*;
@@ -15,7 +16,6 @@ import com.school.sis.storage.FileStorageService;
 import com.school.sis.student.entity.StudentContact;
 import com.school.sis.student.repository.StudentContactRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,13 +25,14 @@ import java.util.*;
 @Service
 public class StudentPortalService {
     private final JdbcTemplate jdbc; private final StudentPortalAccess access; private final UserRepository users;
-    private final StudentContactRepository contacts; private final PasswordEncoder passwords; private final EnrollmentService enrollments;
+    private final StudentContactRepository contacts; private final EnrollmentService enrollments;
     private final AuditService audit; private final FileStorageService storage;
     private final AcademicProgressService academicProgress;
+    private final LinkedIdentitySyncService identitySync;
     public StudentPortalService(JdbcTemplate jdbc,StudentPortalAccess access,UserRepository users,StudentContactRepository contacts,
-                                PasswordEncoder passwords,EnrollmentService enrollments,AuditService audit,FileStorageService storage,
-                                AcademicProgressService academicProgress){
-        this.jdbc=jdbc;this.access=access;this.users=users;this.contacts=contacts;this.passwords=passwords;this.enrollments=enrollments;this.audit=audit;this.storage=storage;this.academicProgress=academicProgress;
+                                EnrollmentService enrollments,AuditService audit,FileStorageService storage,
+                                AcademicProgressService academicProgress,LinkedIdentitySyncService identitySync){
+        this.jdbc=jdbc;this.access=access;this.users=users;this.contacts=contacts;this.enrollments=enrollments;this.audit=audit;this.storage=storage;this.academicProgress=academicProgress;this.identitySync=identitySync;
     }
 
     @Transactional(readOnly=true) public Map<String,Object> dashboard(SisUserDetails p){
@@ -63,18 +64,13 @@ public class StudentPortalService {
     @Transactional public Map<String,Object> updateProfile(ProfileUpdate r,SisUserDetails p){
         String email=r.email().trim().toLowerCase(Locale.ROOT);Integer duplicate=jdbc.queryForObject("select count(*) from users where lower(email)=? and id<>?",Integer.class,email,p.id());
         if(duplicate!=null&&duplicate>0)throw new BusinessRuleException("Email is already in use");
-        User u=users.findById(p.id()).orElseThrow(()->new NotFoundException("User not found"));u.setEmail(email);users.save(u);
+        User u=users.findById(p.id()).orElseThrow(()->new NotFoundException("User not found"));
         StudentContact c=contacts.findById(access.studentId(p)).orElseThrow(()->new NotFoundException("Student contact record not found"));
         c.setEmailAddress(email);c.setMobileNumber(clean(r.mobileNumber()));c.setTelephoneNumber(clean(r.telephoneNumber()));c.setCurrentAddress(clean(r.currentAddress()));
         c.setEmergencyContactName(clean(r.emergencyContactName()));c.setEmergencyContactNumber(clean(r.emergencyContactNumber()));
         c.setEmergencyContactRelationship(clean(r.emergencyContactRelationship()));c.setEmergencyContactAddress(clean(r.emergencyContactAddress()));contacts.save(c);
+        u.getStudent().setContact(c);identitySync.synchronizeStudent(u.getStudent());
         audit.log(u,"STUDENT_PROFILE_UPDATED","STUDENT","Student",access.studentId(p),null,Map.of("email",email));return profile(p);
-    }
-    @Transactional public void changePassword(String current,String next,String refresh,SisUserDetails p){
-        if(next==null||next.length()<8||!next.matches(".*[A-Za-z].*")||!next.matches(".*\\d.*"))throw new BusinessRuleException("New password must be at least 8 characters and include a letter and number");
-        User u=users.findById(p.id()).orElseThrow(()->new NotFoundException("User not found"));if(!passwords.matches(current,u.getPasswordHash()))throw new BusinessRuleException("Current password is incorrect");
-        u.setPasswordHash(passwords.encode(next));u.setMustChangePassword(false);users.save(u);jdbc.update("update refresh_tokens set revoked_at=now() where user_id=? and token<>? and revoked_at is null",p.id(),refresh==null?"":refresh);
-        audit.log(u,"STUDENT_PASSWORD_CHANGED","AUTH","User",u.getId(),null,Map.of("otherSessionsRevoked",true));
     }
     @Transactional(readOnly=true) public Map<String,Object> currentEnrollment(SisUserDetails p){
         var t=term();if(t.isEmpty())return Map.of();var rows=jdbc.queryForList("""

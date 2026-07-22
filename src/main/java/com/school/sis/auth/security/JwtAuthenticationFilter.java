@@ -1,5 +1,7 @@
 package com.school.sis.auth.security;
 
+import com.school.sis.auth.repository.RefreshTokenRepository;
+import com.school.sis.auth.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,11 +19,13 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final SisUserDetailsService userDetailsService;
+    private final UserRepository users;
+    private final RefreshTokenRepository sessions;
 
-    public JwtAuthenticationFilter(JwtService jwtService, SisUserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserRepository users, RefreshTokenRepository sessions) {
         this.jwtService = jwtService;
-        this.userDetailsService = userDetailsService;
+        this.users = users;
+        this.sessions = sessions;
     }
 
     @Override
@@ -37,10 +41,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String username = jwtService.subject(token);
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                if (userDetails instanceof SisUserDetails sisUserDetails
-                        && sisUserDetails.isEnabled()
+                var user = users.findByEmailIgnoreCaseOrUsernameIgnoreCase(username, username).orElse(null);
+                var sessionId = jwtService.sessionId(token);
+                var session = user == null ? null : sessions.findByIdAndUserId(sessionId, user.getId()).orElse(null);
+                SisUserDetails sisUserDetails = user == null ? null : new SisUserDetails(user, sessionId);
+                if (sisUserDetails != null && sisUserDetails.isEnabled() && session != null && session.isUsable()
                         && jwtService.isValid(token, sisUserDetails)) {
+                    UserDetails userDetails = sisUserDetails;
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
@@ -48,9 +55,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+                } else {
+                    request.setAttribute("authenticationFailureCode", "SESSION_REVOKED");
                 }
             }
         } catch (RuntimeException ignored) {
+            request.setAttribute("authenticationFailureCode", "SESSION_REVOKED");
             SecurityContextHolder.clearContext();
         }
 

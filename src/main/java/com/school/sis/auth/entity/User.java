@@ -13,8 +13,10 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.Version;
 import org.hibernate.annotations.ColumnDefault;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -52,6 +54,33 @@ public class User extends AuditableEntity {
     @Column(name = "must_change_password", nullable = false)
     @ColumnDefault("false")
     private boolean mustChangePassword;
+
+    @Column(name = "security_version", nullable = false)
+    @ColumnDefault("0")
+    private long securityVersion;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
+
+    @Column(name = "failed_login_attempts", nullable = false)
+    @ColumnDefault("0")
+    private int failedLoginAttempts;
+
+    @Column(name = "failed_login_window_started_at")
+    private Instant failedLoginWindowStartedAt;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
+
+    @Column(name = "password_changed_at")
+    private Instant passwordChangedAt;
+
+    @Column(name = "temporary_password_expires_at")
+    private Instant temporaryPasswordExpiresAt;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -110,6 +139,23 @@ public class User extends AuditableEntity {
     public void setStudent(Student student) { this.student = student; }
     public boolean isMustChangePassword() { return mustChangePassword; }
     public void setMustChangePassword(boolean value) { this.mustChangePassword = value; }
+    public long getSecurityVersion() { return securityVersion; }
+    public void setSecurityVersion(long securityVersion) { this.securityVersion = securityVersion; }
+    public void incrementSecurityVersion() { this.securityVersion++; }
+    public long getVersion() { return version; }
+    public int getFailedLoginAttempts() { return failedLoginAttempts; }
+    public void setFailedLoginAttempts(int failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }
+    public Instant getFailedLoginWindowStartedAt() { return failedLoginWindowStartedAt; }
+    public void setFailedLoginWindowStartedAt(Instant value) { this.failedLoginWindowStartedAt = value; }
+    public Instant getLockedUntil() { return lockedUntil; }
+    public void setLockedUntil(Instant lockedUntil) { this.lockedUntil = lockedUntil; }
+    public boolean isLocked() { return lockedUntil != null && lockedUntil.isAfter(Instant.now()); }
+    public Instant getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public Instant getPasswordChangedAt() { return passwordChangedAt; }
+    public void setPasswordChangedAt(Instant passwordChangedAt) { this.passwordChangedAt = passwordChangedAt; }
+    public Instant getTemporaryPasswordExpiresAt() { return temporaryPasswordExpiresAt; }
+    public void setTemporaryPasswordExpiresAt(Instant value) { this.temporaryPasswordExpiresAt = value; }
 
     public Set<Role> getRoles() {
         return roles;

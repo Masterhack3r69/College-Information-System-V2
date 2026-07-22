@@ -22,23 +22,24 @@ Jakarta Bean Validation handles field constraints. Services throw `BusinessRuleE
 
 ## Persistence and Migrations
 
-Flyway applies `V1`–`V15`; Hibernate validates rather than creates schema. JPA auditing provides timestamps for many entities, while migrations add constraints and indexes.
+Flyway applies `V1`–`V23`; Hibernate validates rather than creates schema. JPA auditing provides timestamps for many entities, while migrations add constraints and indexes.
 
 ## Other Services
 
 - `FileStorageService` stores and reads documents, materials, forms, and fulfilled requests below configured roots with normalized-path checks.
 - Report services generate PDFs and record generated-report metadata.
 - Audit service records authentication and sensitive mutations.
+- Authentication services hash refresh tokens, maintain stable locked session rows, enforce persistent login protection, synchronize linked identities, and advance user security versions for immediate revocation.
+- Account and RBAC controllers are separated by `ACCOUNT_MANAGE` and `RBAC_MANAGE`.
 
 ## Current Limitations
 
 - Local filesystem storage is unsuitable for multi-instance deployment.
 - Redis is present in Compose but unused by verified backend code.
-- PostgreSQL migration integration testing depends on Docker and was skipped in the latest local test run.
+- PostgreSQL migration integration testing depends on Docker; local Testcontainers discovery may skip it, so direct Docker migration validation is also used.
 
 ## Related Notes
 
 - [[Database Overview]]
 - [[Authentication and Roles]]
 - [[System Architecture]]
-

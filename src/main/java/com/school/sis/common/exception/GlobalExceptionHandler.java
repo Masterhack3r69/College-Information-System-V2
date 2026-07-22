@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.List;
+import org.springframework.http.HttpHeaders;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -39,6 +40,19 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(exception.getCode(), exception.getMessage()));
     }
 
+    @ExceptionHandler(AuthRateLimitException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthRateLimit(AuthRateLimitException exception) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(exception.getRetryAfterSeconds()))
+                .body(ApiResponse.failure("AUTH_RATE_LIMITED", exception.getMessage()));
+    }
+
+    @ExceptionHandler(AuthSecurityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthSecurity(AuthSecurityException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.failure(exception.getCode(), exception.getMessage()));
+    }
+
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ApiResponse<Void>> handleConflict(ConflictException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -53,13 +67,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.failure("Invalid username/email or password"));
+                .body(ApiResponse.failure("AUTHENTICATION_FAILED", "Invalid username/email or password"));
     }
 
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ApiResponse<Void>> handleDisabledAccount() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.failure("Account is inactive"));
+                .body(ApiResponse.failure("AUTHENTICATION_FAILED", "Invalid username/email or password"));
     }
 
     @ExceptionHandler(AccessDeniedException.class)

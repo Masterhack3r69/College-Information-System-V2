@@ -296,7 +296,8 @@ public class EnrollmentService {
                 Map.of("status", previous.name()),
                 Map.of("studentId", enrollment.getStudent().getId(), "status", enrollment.getStatus().name(), "subjectCount", activeSubjects(enrollment).size()));
         return new EnrollmentConfirmationResponse(toResponse(enrollment),
-                new EnrollmentConfirmationResponse.Account(provisioned.created(),provisioned.username(),provisioned.initialPassword(),true));
+                new EnrollmentConfirmationResponse.Account(provisioned.created(),provisioned.username(),
+                        provisioned.initialPassword(),provisioned.expiresAt(),true));
     }
 
     @Transactional

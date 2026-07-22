@@ -12,9 +12,15 @@ import java.util.stream.Stream;
 public class SisUserDetails implements UserDetails {
 
     private final User user;
+    private final UUID sessionId;
 
     public SisUserDetails(User user) {
+        this(user, null);
+    }
+
+    public SisUserDetails(User user, UUID sessionId) {
         this.user = user;
+        this.sessionId = sessionId;
     }
 
     public UUID id() {
@@ -35,6 +41,8 @@ public class SisUserDetails implements UserDetails {
 
     public UUID studentId() { return user.getStudent() == null ? null : user.getStudent().getId(); }
     public boolean mustChangePassword() { return user.isMustChangePassword(); }
+    public long securityVersion() { return user.getSecurityVersion(); }
+    public UUID sessionId() { return sessionId; }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

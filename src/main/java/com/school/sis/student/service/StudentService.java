@@ -3,6 +3,7 @@ package com.school.sis.student.service;
 import com.school.sis.auth.entity.User;
 import com.school.sis.auth.repository.UserRepository;
 import com.school.sis.auth.security.SisUserDetails;
+import com.school.sis.auth.service.LinkedIdentitySyncService;
 import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
@@ -72,6 +73,7 @@ public class StudentService {
     private final UserRepository userRepository;
     private final GradeService gradeService;
     private final AuditService auditService;
+    private final LinkedIdentitySyncService identitySync;
     private final Path documentRoot;
 
     public StudentService(
@@ -85,6 +87,7 @@ public class StudentService {
             UserRepository userRepository,
             GradeService gradeService,
             AuditService auditService,
+            LinkedIdentitySyncService identitySync,
             @Value("${sis.storage.document-root:uploads/documents}") String documentRoot
     ) {
         this.studentRepository = studentRepository;
@@ -97,6 +100,7 @@ public class StudentService {
         this.userRepository = userRepository;
         this.gradeService = gradeService;
         this.auditService = auditService;
+        this.identitySync = identitySync;
         this.documentRoot = Paths.get(documentRoot).toAbsolutePath().normalize();
     }
 
@@ -130,6 +134,7 @@ public class StudentService {
         Student student = findStudent(id);
         applyStudent(student, request);
         saveCompanionRecords(student, request);
+        identitySync.synchronizeStudent(student);
         auditService.log("STUDENT_UPDATED", "STUDENT", "Student", student.getId(), null,
                 Map.of("studentNumber", student.getStudentNumber(), "programId", student.getProgram().getId()));
         return toResponse(student);

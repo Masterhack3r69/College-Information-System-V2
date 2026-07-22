@@ -1,58 +1,59 @@
-import { useDeferredValue, useMemo, useState } from "react"
-import { Controller, useForm, type Path } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
+import { useState } from "react"
 import {
+  AlertTriangle,
   Check,
-  ChevronsUpDown,
+  Clipboard,
+  Clock3,
   KeyRound,
+  Laptop,
   LockKeyhole,
   MoreHorizontal,
-  Plus,
+  RefreshCw,
   Search,
+  ShieldAlert,
   ShieldCheck,
+  Unlock,
   UserCheck,
-  UserRoundCog,
+  UserCog,
+  UserPlus,
   UserX,
-  UsersRound,
 } from "lucide-react"
 import { toast } from "sonner"
-import { ApiError } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
-import type { AdminUser, FacultyAccountOption, Permission, Role, UserAccountRequest } from "@/lib/types"
+import type {
+  AccountSession,
+  AdminUser,
+  FacultyAccountOption,
+  IdentityConflict,
+  Permission,
+  ProvisionedUser,
+  Role,
+} from "@/lib/types"
+import { ApiError } from "@/lib/api"
 import {
+  useAccountActivity,
+  useAccountSessions,
+  useAccountSummary,
   useAdminUsers,
+  useAssignableRoles,
   useCreateAdminUser,
   useFacultyAccountOptions,
+  useIdentityConflicts,
   usePermissions,
+  useReconcileIdentity,
   useResetAdminUserPassword,
+  useRevokeAccountSession,
+  useRevokeAllAccountSessions,
   useRoles,
   useSetAdminUserStatus,
+  useUnlockAdminUser,
   useUpdateAdminUser,
   useUpdateRolePermissions,
+  type UserFilters,
 } from "@/hooks/use-user-administration"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
 import {
   Dialog,
   DialogContent,
@@ -64,41 +65,27 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty"
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Spinner } from "@/components/ui/spinner"
+import { Separator } from "@/components/ui/separator"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import {
   Table,
   TableBody,
@@ -108,471 +95,1522 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
+import { Textarea } from "@/components/ui/textarea"
 
-const userSchema = z.object({
-  username: z.string().trim().min(1, "Username is required").max(80),
-  email: z.string().trim().min(1, "Email is required").email("Enter a valid email").max(120),
-  fullName: z.string().trim().min(1, "Full name is required").max(255),
-  initialPassword: z.string().max(120).optional(),
-  roleIds: z.array(z.string()).min(1, "Select at least one role"),
-  facultyId: z.string().optional(),
-})
-
-const passwordSchema = z
-  .object({
-    newPassword: z.string().min(8, "Use at least 8 characters").max(120),
-    confirmPassword: z.string().min(1, "Confirm the new password"),
-  })
-  .refine((values) => values.newPassword === values.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "Passwords do not match",
-  })
-
-type UserFormValues = z.infer<typeof userSchema>
-type PasswordFormValues = z.infer<typeof passwordSchema>
-
-const EMPTY_USER_FORM: UserFormValues = {
-  username: "",
-  email: "",
-  fullName: "",
-  initialPassword: "",
-  roleIds: [],
-  facultyId: undefined,
-}
-
-function messageFor(error: unknown, fallback: string) {
-  return error instanceof ApiError ? error.message : fallback
-}
-
-function readable(value: string) {
+const initialFilters: UserFilters = { page: 0, size: 20 }
+const protectedPermissionNames = new Set(["ACCOUNT_MANAGE", "RBAC_MANAGE"])
+function date(value?: string) {
   return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
+    ? new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(value))
+    : "Never"
+}
+function relative(value?: string) {
+  if (!value) return "Never"
+  const minutes = Math.floor((Date.now() - new Date(value).getTime()) / 60000)
+  if (minutes < 1) return "Just now"
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return date(value)
+}
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase()
+}
+function typeTone(type: AdminUser["accountType"]) {
+  return type === "STUDENT"
+    ? "bg-violet-50 text-violet-700"
+    : type === "FACULTY"
+      ? "bg-sky-50 text-sky-700"
+      : "bg-slate-100 text-slate-700"
+}
+function identityLabel(user: AdminUser) {
+  if (user.accountType === "FACULTY")
+    return `${user.employeeNumber ?? "Faculty"} · ${user.facultyName ?? "Linked identity"}`
+  if (user.accountType === "STUDENT")
+    return `${user.studentNumber ?? "Student"} · ${user.studentName ?? "Linked identity"}`
+  return "System-managed account"
 }
 
 export function UsersAccountsPage() {
+  const { user: current, can } = useAuth(),
+    [filters, setFilters] = useState<UserFilters>(initialFilters),
+    [section, setSection] = useState("directory"),
+    [selectedId, setSelectedId] = useState<string>(),
+    [editor, setEditor] = useState<AdminUser | "create" | null>(null),
+    [credential, setCredential] = useState<ProvisionedUser | null>(null),
+    [action, setAction] = useState<{
+      kind: "reset" | "status" | "unlock" | "revoke-all" | "revoke-session"
+      account: AdminUser
+      session?: AccountSession
+    } | null>(null),
+    [actionReason, setActionReason] = useState("")
+  const directory = useAdminUsers(filters),
+    summary = useAccountSummary(),
+    assignable = useAssignableRoles(),
+    rbac = can("RBAC_MANAGE"),
+    superAdmin = current?.roles.includes("SUPER_ADMIN") ?? false,
+    roles = useRoles(rbac),
+    permissions = usePermissions(rbac),
+    conflicts = useIdentityConflicts(superAdmin),
+    faculty = useFacultyAccountOptions(
+      "",
+      editor && editor !== "create" ? editor.facultyId : undefined
+    )
+  const selected = directory.data?.items.find((item) => item.id === selectedId)
+  const sessions = useAccountSessions(selectedId),
+    activity = useAccountActivity(selectedId)
+  const create = useCreateAdminUser(),
+    update = useUpdateAdminUser(),
+    status = useSetAdminUserStatus(),
+    reset = useResetAdminUserPassword(),
+    unlock = useUnlockAdminUser(),
+    revoke = useRevokeAccountSession(),
+    revokeAll = useRevokeAllAccountSessions()
+  const workspaceTabs = [
+    "directory",
+    ...(rbac ? ["roles"] : []),
+    ...(superAdmin ? ["conflicts"] : []),
+  ]
+  function handleError(caught: unknown) {
+    toast.error(
+      caught instanceof ApiError
+        ? caught.message
+        : "The account operation could not be completed"
+    )
+  }
+  async function submitEditor(values: EditorValues) {
+    try {
+      if (editor === "create") {
+        const result = await create.mutateAsync(values)
+        setCredential(result)
+      } else if (editor) {
+        await update.mutateAsync({ id: editor.id, request: values })
+        toast.success("Account updated")
+      }
+      setEditor(null)
+    } catch (caught) {
+      handleError(caught)
+    }
+  }
+  async function confirmAction() {
+    if (!action || !actionReason.trim()) return
+    try {
+      if (action.kind === "reset") {
+        setCredential(
+          await reset.mutateAsync({
+            id: action.account.id,
+            version: action.account.version,
+            auditReason: actionReason,
+          })
+        )
+      } else if (action.kind === "status") {
+        await status.mutateAsync({
+          id: action.account.id,
+          active: !action.account.active,
+          version: action.account.version,
+          auditReason: actionReason,
+        })
+        toast.success(
+          `Account ${action.account.active ? "deactivated" : "activated"}`
+        )
+      } else if (action.kind === "unlock") {
+        await unlock.mutateAsync({
+          id: action.account.id,
+          version: action.account.version,
+          auditReason: actionReason,
+        })
+        toast.success("Account unlocked")
+      } else if (action.kind === "revoke-all") {
+        const count = await revokeAll.mutateAsync({
+          userId: action.account.id,
+          version: action.account.version,
+          auditReason: actionReason,
+        })
+        toast.success(`${count} session${count === 1 ? "" : "s"} revoked`)
+      } else if (action.session) {
+        await revoke.mutateAsync({
+          userId: action.account.id,
+          sessionId: action.session.id,
+          auditReason: actionReason,
+        })
+        toast.success("Session revoked")
+      }
+      setAction(null)
+      setActionReason("")
+    } catch (caught) {
+      handleError(caught)
+    }
+  }
+  const metrics = [
+    {
+      label: "Active",
+      value: summary.data?.active ?? 0,
+      detail: `of ${summary.data?.total ?? 0} total`,
+      icon: UserCheck,
+      tone: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      label: "Inactive",
+      value: summary.data?.inactive ?? 0,
+      detail: "cannot sign in",
+      icon: UserX,
+      tone: "text-slate-700 bg-slate-100",
+    },
+    {
+      label: "Locked",
+      value: summary.data?.locked ?? 0,
+      detail: "security holds",
+      icon: LockKeyhole,
+      tone: "text-red-700 bg-red-50",
+    },
+    {
+      label: "Must change",
+      value: summary.data?.forcedChange ?? 0,
+      detail: "temporary passwords",
+      icon: KeyRound,
+      tone: "text-amber-700 bg-amber-50",
+    },
+  ]
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-7">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <ShieldCheck className="size-4" />
-          System administration
+    <div className="mx-auto min-w-0 max-w-[1560px] p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold tracking-[.16em] text-[#0969da] uppercase">
+            Administration
+          </p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[#0b1f3a]">
+            Users & Accounts
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-slate-600">
+            Manage account identity, access, credentials, and active sessions
+            from one directory.
+          </p>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Users &amp; Accounts</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Provision staff access, connect faculty identities, and control permissions without removing historical account records.
-        </p>
+        <Button
+          className="bg-[#0969da] hover:bg-[#075dbf]"
+          onClick={() => setEditor("create")}
+        >
+          <UserPlus />
+          Create account
+        </Button>
       </div>
-
-      <Tabs defaultValue="users" className="flex flex-col gap-5">
-        <TabsList>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="roles">Roles &amp; Permissions</TabsTrigger>
+      <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((metric) => (
+          <section
+            key={metric.label}
+            className="flex min-w-0 items-center gap-4 border bg-white p-4 shadow-sm"
+          >
+            <div
+              className={`grid size-10 place-items-center rounded-md ${metric.tone}`}
+            >
+              <metric.icon className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-2xl font-semibold tabular-nums">
+                {metric.value}
+              </p>
+              <p className="text-sm font-medium">
+                {metric.label}{" "}
+                <span className="font-normal text-slate-500">
+                  · {metric.detail}
+                </span>
+              </p>
+            </div>
+          </section>
+        ))}
+      </div>
+      <Tabs value={section} onValueChange={setSection} className="mt-7 min-w-0">
+        <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b bg-transparent p-0">
+          {workspaceTabs.map((tab) => (
+            <TabsTrigger
+              key={tab}
+              value={tab}
+              className="rounded-none border-b-2 border-transparent px-4 py-3 capitalize data-[state=active]:border-[#0969da] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              {tab === "conflicts"
+                ? `Identity conflicts${conflicts.data?.length ? ` (${conflicts.data.length})` : ""}`
+                : tab}
+            </TabsTrigger>
+          ))}
         </TabsList>
-        <TabsContent value="users">
-          <UsersTab />
+        <TabsContent value="directory" className="mt-0">
+          <section className="border-x border-b bg-white">
+            <div className="grid gap-3 border-b p-4 md:grid-cols-[minmax(240px,1fr)_180px_180px_180px]">
+              <div className="relative">
+                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  className="pl-9"
+                  placeholder="Search name, username, or email"
+                  value={filters.search ?? ""}
+                  onChange={(e) =>
+                    setFilters((value) => ({
+                      ...value,
+                      search: e.target.value,
+                      page: 0,
+                    }))
+                  }
+                />
+              </div>
+              <FilterSelect
+                value={filters.accountType ?? "all"}
+                onChange={(value) =>
+                  setFilters((state) => ({
+                    ...state,
+                    accountType: value === "all" ? undefined : value,
+                    page: 0,
+                  }))
+                }
+                placeholder="All types"
+                items={[
+                  ["all", "All account types"],
+                  ["SYSTEM", "System"],
+                  ["FACULTY", "Faculty"],
+                  ["STUDENT", "Student"],
+                ]}
+              />
+              <FilterSelect
+                value={
+                  filters.active === undefined ? "all" : String(filters.active)
+                }
+                onChange={(value) =>
+                  setFilters((state) => ({
+                    ...state,
+                    active: value === "all" ? undefined : value === "true",
+                    page: 0,
+                  }))
+                }
+                placeholder="All statuses"
+                items={[
+                  ["all", "All statuses"],
+                  ["true", "Active"],
+                  ["false", "Inactive"],
+                ]}
+              />
+              <FilterSelect
+                value={
+                  filters.locked
+                    ? "locked"
+                    : filters.forcedChange
+                      ? "forced"
+                      : "all"
+                }
+                onChange={(value) =>
+                  setFilters((state) => ({
+                    ...state,
+                    locked: value === "locked" ? true : undefined,
+                    forcedChange: value === "forced" ? true : undefined,
+                    page: 0,
+                  }))
+                }
+                placeholder="All security states"
+                items={[
+                  ["all", "All security states"],
+                  ["locked", "Locked"],
+                  ["forced", "Must change password"],
+                ]}
+              />
+            </div>
+            <div className="max-w-full overflow-x-auto">
+              <Table className="min-w-[1020px]">
+                <TableHeader>
+                  <TableRow className="bg-slate-50/70">
+                    <TableHead>Account</TableHead>
+                    <TableHead>Type & domain link</TableHead>
+                    <TableHead>Roles</TableHead>
+                    <TableHead>Security</TableHead>
+                    <TableHead>Last login</TableHead>
+                    <TableHead className="w-12">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {directory.isLoading ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="h-40 text-center text-slate-500"
+                      >
+                        Loading account directory…
+                      </TableCell>
+                    </TableRow>
+                  ) : directory.data?.items.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="h-40 text-center text-slate-500"
+                      >
+                        No accounts match these filters.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    directory.data?.items.map((account) => (
+                      <TableRow
+                        key={account.id}
+                        className="cursor-pointer"
+                        onClick={() => setSelectedId(account.id)}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="grid size-9 place-items-center rounded-full bg-[#eaf2fb] text-xs font-semibold text-[#0b3d78]">
+                              {initials(account.fullName)}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {account.fullName}
+                                </p>
+                                {account.protectedAccount ? (
+                                  <ShieldCheck className="size-4 text-[#0969da]" />
+                                ) : null}
+                              </div>
+                              <p className="text-xs text-slate-500">
+                                {account.username} · {account.email}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className={typeTone(account.accountType)}
+                          >
+                            {account.accountType}
+                          </Badge>
+                          <p className="mt-1 max-w-[260px] truncate text-xs text-slate-500">
+                            {identityLabel(account)}
+                          </p>
+                          {account.identitySyncStatus !== "SYNCED" ? (
+                            <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700">
+                              <AlertTriangle className="size-3" />
+                              {account.identitySyncStatus.replaceAll("_", " ")}
+                            </span>
+                          ) : null}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex max-w-[260px] flex-wrap gap-1">
+                            {account.roles.slice(0, 2).map((role) => (
+                              <Badge key={role.id} variant="outline">
+                                {role.name.replaceAll("_", " ")}
+                              </Badge>
+                            ))}
+                            {account.roles.length > 2 ? (
+                              <Badge variant="outline">
+                                +{account.roles.length - 2}
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <SecurityState account={account} />
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">
+                            {relative(account.lastLoginAt)}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {account.activeSessionCount} active session
+                            {account.activeSessionCount === 1 ? "" : "s"}
+                          </p>
+                        </TableCell>
+                        <TableCell onClick={(event) => event.stopPropagation()}>
+                          <AccountMenu
+                            account={account}
+                            currentId={current?.id}
+                            canMutate={!account.protectedAccount || superAdmin}
+                            onEdit={() => setEditor(account)}
+                            onAction={(kind) => {
+                              setAction({ kind, account })
+                              setActionReason("")
+                            }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
+              <p className="text-slate-500">
+                {directory.data?.totalElements ?? 0} accounts
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={filters.page === 0}
+                  onClick={() =>
+                    setFilters((state) => ({ ...state, page: state.page - 1 }))
+                  }
+                >
+                  Previous
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={
+                    (directory.data?.page ?? 0) + 1 >=
+                    (directory.data?.totalPages ?? 1)
+                  }
+                  onClick={() =>
+                    setFilters((state) => ({ ...state, page: state.page + 1 }))
+                  }
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </section>
         </TabsContent>
-        <TabsContent value="roles">
-          <RolesPermissionsTab />
-        </TabsContent>
+        {rbac ? (
+          <TabsContent value="roles" className="mt-5">
+            <RolesWorkspace
+              key={(roles.data ?? [])
+                .map((role) => `${role.id}:${role.version}`)
+                .join("|")}
+              roles={roles.data ?? []}
+              permissions={permissions.data ?? []}
+            />
+          </TabsContent>
+        ) : null}
+        {superAdmin ? (
+          <TabsContent value="conflicts" className="mt-5">
+            <ConflictsWorkspace conflicts={conflicts.data ?? []} />
+          </TabsContent>
+        ) : null}
       </Tabs>
+      {editor ? (
+        <AccountEditor
+          key={editor === "create" ? "create" : editor.id}
+          open
+          account={editor !== "create" ? editor : undefined}
+          roles={assignable.data ?? []}
+          faculty={faculty.data?.items ?? []}
+          onClose={() => setEditor(null)}
+          onSubmit={submitEditor}
+        />
+      ) : null}
+      {credential ? (
+        <CredentialDialog
+          key={`${credential.account.id}:${credential.expiresAt}`}
+          credential={credential}
+          onClose={() => setCredential(null)}
+        />
+      ) : null}
+      <ActionDialog
+        action={action}
+        reason={actionReason}
+        onReason={setActionReason}
+        onClose={() => {
+          setAction(null)
+          setActionReason("")
+        }}
+        onConfirm={() => void confirmAction()}
+      />
+      <AccountDetail
+        account={selected}
+        open={!!selectedId}
+        sessions={sessions.data ?? []}
+        activity={activity.data ?? []}
+        superAdmin={superAdmin}
+        onClose={() => setSelectedId(undefined)}
+        onEdit={() => selected && setEditor(selected)}
+        onAction={(kind, session) => {
+          if (selected) {
+            setAction({ kind, account: selected, session })
+            setActionReason("")
+          }
+        }}
+      />
     </div>
   )
 }
 
-function UsersTab() {
-  const { user: signedInUser } = useAuth()
-  const [search, setSearch] = useState("")
-  const deferredSearch = useDeferredValue(search)
-  const [roleId, setRoleId] = useState("all")
-  const [status, setStatus] = useState("all")
-  const [page, setPage] = useState(0)
-  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
-  const [userDialogOpen, setUserDialogOpen] = useState(false)
-  const [resetUser, setResetUser] = useState<AdminUser | null>(null)
-  const [statusTarget, setStatusTarget] = useState<AdminUser | null>(null)
-  const roles = useRoles()
-  const users = useAdminUsers({
-    search: deferredSearch || undefined,
-    roleId: roleId === "all" ? undefined : roleId,
-    active: status === "all" ? undefined : status === "active",
-    page,
-    size: 10,
-  })
-  const statusMutation = useSetAdminUserStatus()
-
-  function changeFilter(update: () => void) {
-    update()
-    setPage(0)
-  }
-
-  function openCreate() {
-    setEditingUser(null)
-    setUserDialogOpen(true)
-  }
-
-  function openEdit(user: AdminUser) {
-    setEditingUser(user)
-    setUserDialogOpen(true)
-  }
-
-  async function confirmStatusChange() {
-    if (!statusTarget) return
-    try {
-      await statusMutation.mutateAsync({ id: statusTarget.id, active: !statusTarget.active })
-      toast.success(`${statusTarget.fullName} is now ${statusTarget.active ? "inactive" : "active"}.`)
-      setStatusTarget(null)
-    } catch (error) {
-      toast.error(messageFor(error, "Unable to update account status"))
-    }
-  }
-
+function FilterSelect({
+  value,
+  onChange,
+  placeholder,
+  items,
+}: {
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  items: string[][]
+}) {
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">System users</h2>
-          <p className="text-sm text-muted-foreground">Accounts stay in the audit trail even when access is deactivated.</p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus data-icon="inline-start" />
-          New user
-        </Button>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {items.map(([value, label]) => (
+          <SelectItem key={value} value={value}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+function SecurityState({ account }: { account: AdminUser }) {
+  if (!account.active)
+    return (
+      <Badge variant="outline" className="border-slate-300 text-slate-600">
+        Inactive
+      </Badge>
+    )
+  if (account.locked)
+    return (
+      <Badge
+        variant="outline"
+        className="border-red-200 bg-red-50 text-red-700"
+      >
+        <LockKeyhole />
+        Locked
+      </Badge>
+    )
+  if (account.mustChangePassword)
+    return (
+      <div>
+        <Badge
+          variant="outline"
+          className="border-amber-200 bg-amber-50 text-amber-800"
+        >
+          <Clock3 />
+          Must change
+        </Badge>
+        {account.temporaryPasswordExpiresAt ? (
+          <p className="mt-1 text-xs text-slate-500">
+            Expires {date(account.temporaryPasswordExpiresAt)}
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-slate-500">
+            Grandfathered credential
+          </p>
+        )}
       </div>
+    )
+  return (
+    <Badge
+      variant="outline"
+      className="border-emerald-200 bg-emerald-50 text-emerald-700"
+    >
+      <Check />
+      Secure
+    </Badge>
+  )
+}
+function AccountMenu({
+  account,
+  currentId,
+  canMutate,
+  onEdit,
+  onAction,
+}: {
+  account: AdminUser
+  currentId?: string
+  canMutate: boolean
+  onEdit: () => void
+  onAction: (kind: "reset" | "status" | "unlock" | "revoke-all") => void
+}) {
+  const immutable = account.accountType === "STUDENT"
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label={`Actions for ${account.fullName}`}
+        >
+          <MoreHorizontal />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem disabled={!canMutate || immutable} onSelect={onEdit}>
+          <UserCog />
+          Edit account
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!canMutate}
+          onSelect={() => onAction("reset")}
+        >
+          <KeyRound />
+          Reset password
+        </DropdownMenuItem>
+        {account.locked ? (
+          <DropdownMenuItem
+            disabled={!canMutate}
+            onSelect={() => onAction("unlock")}
+          >
+            <Unlock />
+            Unlock account
+          </DropdownMenuItem>
+        ) : null}
+        <DropdownMenuItem
+          disabled={!canMutate || account.id === currentId}
+          onSelect={() => onAction("status")}
+        >
+          {account.active ? <UserX /> : <UserCheck />}
+          {account.active ? "Deactivate" : "Activate"}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={!canMutate || account.activeSessionCount === 0}
+          onSelect={() => onAction("revoke-all")}
+          className="text-red-700"
+        >
+          <ShieldAlert />
+          Revoke all sessions
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
-      <div className="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_14rem_11rem]">
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            aria-label="Search users"
-            className="pl-9"
-            placeholder="Search name, username, or email"
-            value={search}
-            onChange={(event) => changeFilter(() => setSearch(event.target.value))}
+type EditorValues = {
+  username: string
+  email: string
+  fullName: string
+  roleIds: string[]
+  facultyId?: string
+  version?: number
+  auditReason: string
+}
+function AccountEditor({
+  open,
+  account,
+  roles,
+  faculty,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean
+  account?: AdminUser
+  roles: Role[]
+  faculty: FacultyAccountOption[]
+  onClose: () => void
+  onSubmit: (values: EditorValues) => void
+}) {
+  const [username, setUsername] = useState(account?.username ?? ""),
+    [email, setEmail] = useState(account?.email ?? ""),
+    [fullName, setFullName] = useState(account?.fullName ?? ""),
+    [facultyId, setFacultyId] = useState<string>(
+      account?.facultyId ?? "none"
+    ),
+    [roleIds, setRoleIds] = useState<string[]>(
+      account?.roles.map((role) => role.id) ?? []
+    ),
+    [reason, setReason] = useState("")
+  const linked = facultyId !== "none",
+    selectedFaculty = faculty.find((item) => item.id === facultyId),
+    effectiveEmail = linked
+      ? (selectedFaculty?.email ?? account?.facultyEmail ?? email)
+      : email,
+    effectiveName = linked
+      ? (selectedFaculty?.fullName ?? account?.facultyName ?? fullName)
+      : fullName
+  function toggle(id: string, checked: boolean) {
+    setRoleIds((values) =>
+      checked ? [...values, id] : values.filter((value) => value !== id)
+    )
+  }
+  return (
+    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {account ? "Edit account" : "Create account"}
+          </DialogTitle>
+          <DialogDescription>
+            {account
+              ? "Update identity linkage and authorized roles."
+              : "A 20-character temporary credential will be generated by the server."}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-5 py-2 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="account-username">Username</Label>
+            <Input
+              id="account-username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Account type</Label>
+            <Select value={facultyId} onValueChange={setFacultyId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">System account</SelectItem>
+                {faculty.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.employeeNumber} · {item.fullName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="account-name">Full name</Label>
+            <Input
+              id="account-name"
+              value={effectiveName}
+              onChange={(e) => setFullName(e.target.value)}
+              disabled={linked}
+            />
+            {linked ? (
+              <p className="text-xs text-slate-500">
+                Read-only; synchronized from Faculty.
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="account-email">Email</Label>
+            <Input
+              id="account-email"
+              type="email"
+              value={effectiveEmail}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={linked}
+            />
+            {linked ? (
+              <p className="text-xs text-slate-500">
+                Read-only; synchronized from Faculty.
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-3 sm:col-span-2">
+            <Label>Roles</Label>
+            <div className="grid gap-2 border p-3 sm:grid-cols-2">
+              {roles.map((role) => (
+                <label
+                  key={role.id}
+                  className="flex items-center gap-3 py-1 text-sm"
+                >
+                  <Checkbox
+                    checked={roleIds.includes(role.id)}
+                    onCheckedChange={(checked) =>
+                      toggle(role.id, checked === true)
+                    }
+                  />
+                  <span>{role.name.replaceAll("_", " ")}</span>
+                  {role.protectedRole ? (
+                    <ShieldCheck className="ml-auto size-4 text-[#0969da]" />
+                  ) : null}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="account-reason">Audit reason</Label>
+            <Textarea
+              id="account-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Why is this account or its access being changed?"
+              maxLength={500}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            className="bg-[#0969da]"
+            disabled={
+              !username ||
+              !effectiveEmail ||
+              !effectiveName ||
+              roleIds.length === 0 ||
+              !reason.trim()
+            }
+            onClick={() =>
+              onSubmit({
+                username,
+                email: effectiveEmail,
+                fullName: effectiveName,
+                roleIds,
+                facultyId: facultyId === "none" ? undefined : facultyId,
+                version: account?.version,
+                auditReason: reason.trim(),
+              })
+            }
+          >
+            {account ? "Save changes" : "Create account"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function CredentialDialog({
+  credential,
+  onClose,
+}: {
+  credential: ProvisionedUser | null
+  onClose: () => void
+}) {
+  const [ack, setAck] = useState(false)
+  return (
+    <Dialog
+      open={!!credential}
+      onOpenChange={(open) => {
+        if (!open && ack) onClose()
+      }}
+    >
+      <DialogContent
+        onEscapeKeyDown={(event) => !ack && event.preventDefault()}
+        onInteractOutside={(event) => !ack && event.preventDefault()}
+        className="sm:max-w-lg"
+      >
+        <DialogHeader>
+          <div className="mb-2 grid size-11 place-items-center rounded-md bg-amber-50 text-amber-700">
+            <KeyRound />
+          </div>
+          <DialogTitle>Copy this temporary credential now</DialogTitle>
+          <DialogDescription>
+            It is returned once and cannot be retrieved later. Share it through
+            an approved secure channel.
+          </DialogDescription>
+        </DialogHeader>
+        {credential ? (
+          <div className="space-y-4">
+            <div className="border bg-slate-50 p-4">
+              <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+                Username
+              </p>
+              <p className="mt-1 font-mono text-sm">
+                {credential.account.username}
+              </p>
+              <Separator className="my-3" />
+              <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+                Temporary password
+              </p>
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <code className="text-lg font-semibold break-all">
+                  {credential.temporaryPassword}
+                </code>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() =>
+                    void navigator.clipboard
+                      .writeText(credential.temporaryPassword)
+                      .then(() => toast.success("Credential copied"))
+                  }
+                >
+                  <Clipboard />
+                </Button>
+              </div>
+              <p className="mt-3 text-xs text-slate-500">
+                Expires {date(credential.expiresAt)}
+              </p>
+            </div>
+            <label className="flex items-start gap-3 text-sm">
+              <Checkbox
+                checked={ack}
+                onCheckedChange={(value) => setAck(value === true)}
+              />
+              <span>
+                I copied the credential and understand that it will not be shown
+                again.
+              </span>
+            </label>
+          </div>
+        ) : null}
+        <DialogFooter>
+          <Button disabled={!ack} onClick={onClose}>
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ActionDialog({
+  action,
+  reason,
+  onReason,
+  onClose,
+  onConfirm,
+}: {
+  action: { kind: string; account: AdminUser; session?: AccountSession } | null
+  reason: string
+  onReason: (value: string) => void
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  const labels: Record<string, [string, string]> = {
+    reset: [
+      "Reset password",
+      "Generate a new 24-hour temporary credential and revoke all sessions.",
+    ],
+    status: [
+      action?.account.active ? "Deactivate account" : "Activate account",
+      action?.account.active
+        ? "The account will be unable to sign in and all sessions will be revoked."
+        : "The account will be allowed to sign in again.",
+    ],
+    unlock: [
+      "Unlock account",
+      "Clear the persisted login lock and failed-attempt window.",
+    ],
+    "revoke-all": [
+      "Revoke all sessions",
+      "Every access and refresh token for this account will stop working immediately.",
+    ],
+    "revoke-session": [
+      "Revoke session",
+      "This device will be signed out immediately.",
+    ],
+  }
+  const copy = action ? labels[action.kind] : ["Confirm action", ""]
+  return (
+    <Dialog open={!!action} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{copy[0]}</DialogTitle>
+          <DialogDescription>
+            {copy[1]} Account: {action?.account.fullName}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Label htmlFor="action-reason">Audit reason</Label>
+          <Textarea
+            id="action-reason"
+            value={reason}
+            onChange={(e) => onReason(e.target.value)}
+            placeholder="Required for security audit history"
           />
         </div>
-        <Select value={roleId} onValueChange={(value) => changeFilter(() => setRoleId(value))}>
-          <SelectTrigger aria-label="Filter by role"><SelectValue placeholder="All roles" /></SelectTrigger>
-          <SelectContent><SelectGroup>
-            <SelectItem value="all">All roles</SelectItem>
-            {roles.data?.map((role) => <SelectItem key={role.id} value={role.id}>{readable(role.name)}</SelectItem>)}
-          </SelectGroup></SelectContent>
-        </Select>
-        <Select value={status} onValueChange={(value) => changeFilter(() => setStatus(value))}>
-          <SelectTrigger aria-label="Filter by status"><SelectValue placeholder="All statuses" /></SelectTrigger>
-          <SelectContent><SelectGroup>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectGroup></SelectContent>
-        </Select>
-      </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant={
+              action?.kind.includes("revoke") || action?.kind === "status"
+                ? "destructive"
+                : "default"
+            }
+            disabled={!reason.trim()}
+            onClick={onConfirm}
+          >
+            Confirm
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
-      {users.isError ? (
-        <Alert variant="destructive">
-          <LockKeyhole />
-          <AlertTitle>Unable to load users</AlertTitle>
-          <AlertDescription>{messageFor(users.error, "Try refreshing the page.")}</AlertDescription>
-        </Alert>
-      ) : users.isLoading ? (
-        <div className="flex flex-col gap-2 rounded-lg border p-4">
-          {Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="h-11 w-full" />)}
-        </div>
-      ) : users.data?.items.length ? (
-        <div className="overflow-x-auto rounded-lg border" tabIndex={0} aria-label="System users table">
-          <Table className="min-w-[62rem]">
-            <TableHeader><TableRow>
-              <TableHead>User</TableHead><TableHead>Roles</TableHead><TableHead>Faculty link</TableHead>
-              <TableHead>Status</TableHead><TableHead>Updated</TableHead><TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {users.data.items.map((account) => (
-                <TableRow key={account.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-sm font-medium">
-                        {account.fullName.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase()}
+function AccountDetail({
+  account,
+  open,
+  sessions,
+  activity,
+  superAdmin,
+  onClose,
+  onEdit,
+  onAction,
+}: {
+  account?: AdminUser
+  open: boolean
+  sessions: AccountSession[]
+  activity: {
+    id: string
+    action: string
+    createdAt: string
+    ipAddress?: string
+  }[]
+  superAdmin: boolean
+  onClose: () => void
+  onEdit: () => void
+  onAction: (
+    kind: "reset" | "status" | "unlock" | "revoke-all" | "revoke-session",
+    session?: AccountSession
+  ) => void
+}) {
+  if (!account) return null
+  const readOnly =
+    (account.protectedAccount && !superAdmin) ||
+    account.accountType === "STUDENT"
+  return (
+    <Sheet open={open} onOpenChange={(value) => !value && onClose()}>
+      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+        <SheetHeader>
+          <div className="flex items-start gap-3 pr-8">
+            <div className="grid size-11 place-items-center rounded-full bg-[#eaf2fb] font-semibold text-[#0b3d78]">
+              {initials(account.fullName)}
+            </div>
+            <div>
+              <SheetTitle className="flex items-center gap-2">
+                {account.fullName}
+                {account.protectedAccount ? (
+                  <ShieldCheck className="size-4 text-[#0969da]" />
+                ) : null}
+              </SheetTitle>
+              <SheetDescription>
+                {account.username} · {account.email}
+              </SheetDescription>
+            </div>
+          </div>
+        </SheetHeader>
+        {readOnly ? (
+          <div className="mt-5 flex gap-3 border-l-4 border-blue-500 bg-blue-50 p-3 text-sm text-blue-950">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0" />
+            <span>
+              {account.accountType === "STUDENT"
+                ? "Student identity and role are system-managed."
+                : "Only a Super Admin may change this protected account."}
+            </span>
+          </div>
+        ) : null}
+        <Tabs defaultValue="identity" className="mt-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="identity">Identity</TabsTrigger>
+            <TabsTrigger value="access">Access</TabsTrigger>
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+          </TabsList>
+          <TabsContent value="identity" className="space-y-5 pt-4">
+            <Detail label="Account type" value={account.accountType} />
+            <Detail label="Domain link" value={identityLabel(account)} />
+            <Detail
+              label="Identity synchronization"
+              value={account.identitySyncStatus.replaceAll("_", " ")}
+            />
+            <Detail label="Created" value={date(account.createdAt)} />
+            <Detail label="Last updated" value={date(account.updatedAt)} />
+            {!readOnly ? (
+              <Button variant="outline" className="w-full" onClick={onEdit}>
+                <UserCog />
+                Edit identity and roles
+              </Button>
+            ) : null}
+          </TabsContent>
+          <TabsContent value="access" className="space-y-5 pt-4">
+            <div>
+              <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+                Roles
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {account.roles.map((role) => (
+                  <Badge key={role.id} variant="outline">
+                    {role.name.replaceAll("_", " ")}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <Separator />
+            <SecurityState account={account} />
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                disabled={account.protectedAccount && !superAdmin}
+                onClick={() => onAction("reset")}
+              >
+                <KeyRound />
+                Reset password
+              </Button>
+              {account.locked ? (
+                <Button
+                  variant="outline"
+                  disabled={account.protectedAccount && !superAdmin}
+                  onClick={() => onAction("unlock")}
+                >
+                  <Unlock />
+                  Unlock
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  disabled={account.protectedAccount && !superAdmin}
+                  onClick={() => onAction("status")}
+                >
+                  {account.active ? <UserX /> : <UserCheck />}
+                  {account.active ? "Deactivate" : "Activate"}
+                </Button>
+              )}
+            </div>
+          </TabsContent>
+          <TabsContent value="sessions" className="pt-4">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm text-slate-600">
+                {sessions.filter((item) => !item.revokedAt).length} active
+                sessions
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={
+                  (account.protectedAccount && !superAdmin) ||
+                  account.activeSessionCount === 0
+                }
+                onClick={() => onAction("revoke-all")}
+              >
+                Revoke all
+              </Button>
+            </div>
+            <div className="divide-y border">
+              {sessions.length === 0 ? (
+                <p className="p-6 text-center text-sm text-slate-500">
+                  No session history.
+                </p>
+              ) : (
+                sessions.map((session) => (
+                  <div key={session.id} className="flex items-start gap-3 p-4">
+                    <Laptop className="mt-1 size-5 text-slate-500" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">
+                          {session.current ? "Current session" : "Web session"}
+                        </p>
+                        {session.current ? <Badge>Current</Badge> : null}
+                        {session.revokedAt ? (
+                          <Badge variant="outline">Revoked</Badge>
+                        ) : null}
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{account.fullName}</p>
-                        <p className="truncate text-xs text-muted-foreground">@{account.username} · {account.email}</p>
-                      </div>
+                      <p className="mt-1 truncate text-xs text-slate-500">
+                        {session.userAgent ?? "Unknown device"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Last used {date(session.lastUsedAt)} ·{" "}
+                        {session.lastIp ?? "IP unavailable"}
+                      </p>
                     </div>
-                  </TableCell>
-                  <TableCell><div className="flex max-w-xs flex-wrap gap-1">
-                    {account.roles.map((role) => <Badge key={role.id} variant="secondary">{readable(role.name)}</Badge>)}
-                  </div></TableCell>
-                  <TableCell>{account.facultyName ?? <span className="text-muted-foreground">Not linked</span>}</TableCell>
-                  <TableCell><Badge variant={account.active ? "default" : "outline"}>{account.active ? "Active" : "Inactive"}</Badge></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{new Date(account.updatedAt).toLocaleDateString()}</TableCell>
+                    {!session.revokedAt ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-700"
+                        disabled={account.protectedAccount && !superAdmin}
+                        onClick={() => onAction("revoke-session", session)}
+                      >
+                        Revoke
+                      </Button>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+          </TabsContent>
+          <TabsContent value="activity" className="pt-4">
+            <div className="divide-y border">
+              {activity.length === 0 ? (
+                <p className="p-6 text-center text-sm text-slate-500">
+                  No recorded security activity.
+                </p>
+              ) : (
+                activity.map((item) => (
+                  <div key={item.id} className="p-4">
+                    <p className="text-sm font-medium">
+                      {item.action.replaceAll("_", " ")}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {date(item.createdAt)}
+                      {item.ipAddress ? ` · ${item.ipAddress}` : ""}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </SheetContent>
+    </Sheet>
+  )
+}
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-medium">{value}</p>
+    </div>
+  )
+}
+
+function RolesWorkspace({
+  roles,
+  permissions,
+}: {
+  roles: Role[]
+  permissions: Permission[]
+}) {
+  const mutate = useUpdateRolePermissions(),
+    [selectedId, setSelectedId] = useState<string | undefined>(roles[0]?.id),
+    [ids, setIds] = useState<string[]>(
+      roles[0]?.permissions.map((permission) => permission.id) ?? []
+    ),
+    [reason, setReason] = useState("")
+  const selected = roles.find((role) => role.id === selectedId) ?? roles[0]
+  function selectRole(role: Role) {
+    setSelectedId(role.id)
+    setIds(role.permissions.map((permission) => permission.id))
+    setReason("")
+  }
+  function toggle(id: string, checked: boolean) {
+    setIds((values) =>
+      checked ? [...values, id] : values.filter((value) => value !== id)
+    )
+  }
+  return (
+    <section className="grid min-h-[520px] border bg-white lg:grid-cols-[280px_1fr]">
+      <aside className="border-b p-3 lg:border-r lg:border-b-0">
+        <p className="px-2 pb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+          Migration-managed roles
+        </p>
+        {roles.map((role) => (
+          <button
+            key={role.id}
+            onClick={() => selectRole(role)}
+            className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm ${selected?.id === role.id ? "bg-blue-50 font-medium text-[#075dbf]" : "hover:bg-slate-50"}`}
+          >
+            <span>{role.name.replaceAll("_", " ")}</span>
+            {role.protectedRole ? <ShieldCheck className="size-4" /> : null}
+          </button>
+        ))}
+      </aside>
+      <div className="p-5 sm:p-7">
+        {selected ? (
+          <>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  {selected.name.replaceAll("_", " ")}
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  {selected.description}
+                </p>
+              </div>
+              {selected.protectedRole ? (
+                <Badge className="bg-blue-50 text-blue-700">
+                  <ShieldCheck />
+                  System managed
+                </Badge>
+              ) : null}
+            </div>
+            <div className="mt-6 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {permissions.map((permission) => {
+                const locked =
+                  selected.protectedRole ||
+                  protectedPermissionNames.has(permission.name)
+                return (
+                  <label
+                    key={permission.id}
+                    className={`flex items-start gap-3 border p-3 text-sm ${locked ? "bg-slate-50 text-slate-500" : ""}`}
+                  >
+                    <Checkbox
+                      checked={ids.includes(permission.id)}
+                      disabled={locked}
+                      onCheckedChange={(checked) =>
+                        toggle(permission.id, checked === true)
+                      }
+                    />
+                    <span>
+                      <span className="font-medium">{permission.name}</span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500">
+                        {permission.description}
+                      </span>
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+            <div className="mt-6 space-y-2">
+              <Label htmlFor="role-reason">Audit reason</Label>
+              <Textarea
+                id="role-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                disabled={selected.protectedRole}
+                placeholder="Why is this permission assignment changing?"
+              />
+            </div>
+            <Button
+              className="mt-4"
+              disabled={
+                selected.protectedRole || !reason.trim() || mutate.isPending
+              }
+              onClick={() =>
+                void mutate
+                  .mutateAsync({
+                    id: selected.id,
+                    permissionIds: ids,
+                    version: selected.version,
+                    auditReason: reason,
+                  })
+                  .then(() => {
+                    toast.success("Role permissions updated")
+                    setReason("")
+                  })
+                  .catch((error) =>
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Unable to update role"
+                    )
+                  )
+              }
+            >
+              Save permissions
+            </Button>
+          </>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
+function ConflictsWorkspace({ conflicts }: { conflicts: IdentityConflict[] }) {
+  const reconcile = useReconcileIdentity(),
+    [target, setTarget] = useState<IdentityConflict>(),
+    [reason, setReason] = useState("")
+  async function submit() {
+    if (!target || !reason.trim()) return
+    try {
+      await reconcile.mutateAsync({
+        id: target.userId,
+        version: target.version,
+        auditReason: reason,
+      })
+      toast.success("Identity reconciled")
+      setTarget(undefined)
+      setReason("")
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to reconcile identity"
+      )
+    }
+  }
+  return (
+    <section className="border bg-white">
+      <div className="border-b p-5">
+        <h2 className="text-lg font-semibold">Preserved identity mismatches</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Review legacy account values against authoritative faculty and student
+          records.
+        </p>
+      </div>
+      {conflicts.length === 0 ? (
+        <div className="grid place-items-center p-14 text-center">
+          <ShieldCheck className="size-9 text-emerald-600" />
+          <p className="mt-3 font-medium">
+            All linked identities are synchronized
+          </p>
+        </div>
+      ) : (
+        <div className="max-w-full overflow-x-auto">
+          <Table className="min-w-[850px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Account</TableHead>
+                <TableHead>Current identity</TableHead>
+                <TableHead>Authoritative identity</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {conflicts.map((conflict) => (
+                <TableRow key={conflict.userId}>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${account.fullName}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Account actions</DropdownMenuLabel>
-                        <DropdownMenuGroup>
-                          <DropdownMenuItem onSelect={() => openEdit(account)}><UserRoundCog />Edit user</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setResetUser(account)}><KeyRound />Reset password</DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                          <DropdownMenuItem
-                            disabled={account.active && account.id === signedInUser?.id}
-                            variant={account.active ? "destructive" : "default"}
-                            onSelect={() => setStatusTarget(account)}
-                          >
-                            {account.active ? <UserX /> : <UserCheck />}
-                            {account.active ? "Deactivate" : "Activate"}
-                          </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <p className="font-medium">{conflict.username}</p>
+                    <Badge variant="outline">{conflict.accountType}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <p>{conflict.accountName}</p>
+                    <p className="text-xs text-slate-500">
+                      {conflict.accountEmail}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <p>{conflict.authoritativeName}</p>
+                    <p className="text-xs text-slate-500">
+                      {conflict.authoritativeEmail}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      className={
+                        conflict.status === "EMAIL_CONFLICT"
+                          ? "bg-red-50 text-red-700"
+                          : "bg-amber-50 text-amber-800"
+                      }
+                    >
+                      {conflict.status.replaceAll("_", " ")}
+                    </Badge>
+                    {conflict.conflictingUserId ? (
+                      <p className="mt-1 text-xs text-red-700">
+                        Resolve account {conflict.conflictingUserId.slice(0, 8)}{" "}
+                        first
+                      </p>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!!conflict.conflictingUserId}
+                      onClick={() => setTarget(conflict)}
+                    >
+                      <RefreshCw />
+                      Reconcile
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
-      ) : (
-        <Empty className="min-h-64 border">
-          <EmptyHeader><EmptyMedia variant="icon"><UsersRound /></EmptyMedia><EmptyTitle>No users found</EmptyTitle>
-            <EmptyDescription>Adjust the filters or create a new system user.</EmptyDescription></EmptyHeader>
-        </Empty>
       )}
-
-      {users.data && users.data.totalPages > 0 ? (
-        <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-muted-foreground">Showing {users.data.items.length} of {users.data.totalElements} users</p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>Previous</Button>
-            <span className="text-muted-foreground">Page {page + 1} of {users.data.totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page + 1 >= users.data.totalPages} onClick={() => setPage((value) => value + 1)}>Next</Button>
+      <Dialog
+        open={!!target}
+        onOpenChange={(open) => !open && setTarget(undefined)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reconcile authoritative identity</DialogTitle>
+            <DialogDescription>
+              This copies the linked domain name and email into{" "}
+              {target?.username}. The action is audited.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Audit reason</Label>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Reason for reconciling this legacy mismatch"
+            />
           </div>
-        </div>
-      ) : null}
-
-      <UserDialog key={editingUser?.id ?? "new-user"} open={userDialogOpen} onOpenChange={setUserDialogOpen} user={editingUser} roles={roles.data ?? []} />
-      <PasswordResetDialog user={resetUser} onOpenChange={(open) => { if (!open) setResetUser(null) }} />
-      <AlertDialog open={statusTarget !== null} onOpenChange={(open) => { if (!open) setStatusTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{statusTarget?.active ? "Deactivate account?" : "Activate account?"}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {statusTarget?.active
-                ? `${statusTarget.fullName} will lose access immediately and all refresh sessions will be revoked.`
-                : `${statusTarget?.fullName} will be able to sign in again with their assigned roles.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void confirmStatusChange()} disabled={statusMutation.isPending}>
-              {statusMutation.isPending ? <Spinner data-icon="inline-start" /> : null}
-              {statusTarget?.active ? "Deactivate" : "Activate"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTarget(undefined)}>
+              Cancel
+            </Button>
+            <Button disabled={!reason.trim()} onClick={() => void submit()}>
+              Reconcile identity
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
   )
-}
-
-function UserDialog({ open, onOpenChange, user, roles }: { open: boolean; onOpenChange: (open: boolean) => void; user: AdminUser | null; roles: Role[] }) {
-  const createMutation = useCreateAdminUser()
-  const updateMutation = useUpdateAdminUser()
-  const initialValues: UserFormValues = user ? {
-    username: user.username,
-    email: user.email,
-    fullName: user.fullName,
-    initialPassword: "",
-    roleIds: user.roles.map((role) => role.id),
-    facultyId: user.facultyId,
-  } : EMPTY_USER_FORM
-  const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    setError,
-    formState: { errors },
-  } = useForm<UserFormValues>({ resolver: zodResolver(userSchema), defaultValues: initialValues })
-
-  function handleOpenChange(nextOpen: boolean) {
-    if (!nextOpen) reset(initialValues)
-    onOpenChange(nextOpen)
-  }
-
-  async function submit(values: UserFormValues) {
-    if (!user && (!values.initialPassword || values.initialPassword.length < 8)) {
-      setError("initialPassword", { message: "Use at least 8 characters" })
-      return
-    }
-    const request: UserAccountRequest = {
-      username: values.username,
-      email: values.email,
-      fullName: values.fullName,
-      roleIds: values.roleIds,
-      facultyId: values.facultyId || undefined,
-      initialPassword: user ? undefined : values.initialPassword,
-    }
-    try {
-      if (user) await updateMutation.mutateAsync({ id: user.id, request })
-      else await createMutation.mutateAsync(request)
-      toast.success(user ? "User updated successfully" : "User created successfully")
-      onOpenChange(false)
-    } catch (error) {
-      if (error instanceof ApiError && error.errors.length) {
-        error.errors.forEach((issue) => setError(issue.field as Path<UserFormValues>, { message: issue.message }))
-      }
-      toast.error(messageFor(error, "Unable to save user"))
-    }
-  }
-
-  const pending = createMutation.isPending || updateMutation.isPending
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>{user ? "Edit user" : "New system user"}</DialogTitle>
-          <DialogDescription>{user ? "Update identity, role, and faculty relationships." : "Create an active account with an initial password."}</DialogDescription>
-        </DialogHeader>
-        <form className="flex flex-col gap-6" onSubmit={handleSubmit(submit)}>
-          <FieldGroup className="grid gap-4 sm:grid-cols-2">
-            <Field data-invalid={!!errors.fullName} className="sm:col-span-2"><FieldLabel htmlFor="fullName">Full name</FieldLabel>
-              <Input id="fullName" aria-invalid={!!errors.fullName} autoComplete="name" {...register("fullName")} /><FieldError>{errors.fullName?.message}</FieldError></Field>
-            <Field data-invalid={!!errors.username}><FieldLabel htmlFor="username">Username</FieldLabel>
-              <Input id="username" aria-invalid={!!errors.username} autoComplete="off" {...register("username")} /><FieldError>{errors.username?.message}</FieldError></Field>
-            <Field data-invalid={!!errors.email}><FieldLabel htmlFor="email">Email</FieldLabel>
-              <Input id="email" type="email" aria-invalid={!!errors.email} autoComplete="email" {...register("email")} /><FieldError>{errors.email?.message}</FieldError></Field>
-            {!user ? <Field data-invalid={!!errors.initialPassword} className="sm:col-span-2"><FieldLabel htmlFor="initialPassword">Initial password</FieldLabel>
-              <Input id="initialPassword" type="password" aria-invalid={!!errors.initialPassword} autoComplete="new-password" {...register("initialPassword")} />
-              <FieldDescription>Between 8 and 120 characters. The administrator must share it securely.</FieldDescription><FieldError>{errors.initialPassword?.message}</FieldError></Field> : null}
-          </FieldGroup>
-
-          <Controller control={control} name="roleIds" render={({ field }) => (
-            <FieldSet data-invalid={!!errors.roleIds}><FieldLegend variant="label">Roles</FieldLegend>
-              <FieldDescription>Permissions are combined when more than one role is assigned.</FieldDescription>
-              <FieldGroup data-slot="checkbox-group" className="grid gap-3 sm:grid-cols-2">
-                {roles.map((role) => {
-                  const checked = field.value.includes(role.id)
-                  return <Field key={role.id} orientation="horizontal">
-                    <Checkbox id={`role-${role.id}`} checked={checked} onCheckedChange={(next) => field.onChange(next ? [...field.value, role.id] : field.value.filter((id) => id !== role.id))} />
-                    <FieldContent><FieldLabel htmlFor={`role-${role.id}`}>{readable(role.name)}</FieldLabel><FieldDescription>{role.description}</FieldDescription></FieldContent>
-                  </Field>
-                })}
-              </FieldGroup><FieldError>{errors.roleIds?.message}</FieldError>
-            </FieldSet>
-          )} />
-
-          <Controller control={control} name="facultyId" render={({ field }) => (
-            <Field><FieldLabel>Faculty link</FieldLabel><FacultyCombobox value={field.value} includeFacultyId={user?.facultyId} onChange={field.onChange} />
-              <FieldDescription>Optional. A faculty record can belong to only one user account.</FieldDescription></Field>
-          )} />
-          <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={pending}>{pending ? <Spinner data-icon="inline-start" /> : null}{user ? "Save changes" : "Create user"}</Button></DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function FacultyCombobox({ value, includeFacultyId, onChange }: { value?: string; includeFacultyId?: string; onChange: (value?: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState("")
-  const deferredSearch = useDeferredValue(search)
-  const options = useFacultyAccountOptions(deferredSearch, includeFacultyId)
-  const selected = options.data?.items.find((option) => option.id === value)
-  return <Popover open={open} onOpenChange={setOpen}>
-    <PopoverTrigger asChild><Button type="button" variant="outline" role="combobox" aria-label="Faculty link" aria-expanded={open} className="w-full justify-between font-normal">
-      <span className="truncate">{selected ? `${selected.fullName} · ${selected.employeeNumber}` : "No faculty link"}</span><ChevronsUpDown className="text-muted-foreground" />
-    </Button></PopoverTrigger>
-    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-      <Command shouldFilter={false}><CommandInput placeholder="Search available faculty" value={search} onValueChange={setSearch} />
-        <CommandList><CommandGroup>
-          <CommandItem value="unlinked" onSelect={() => { onChange(undefined); setOpen(false) }}><Check className={cn("opacity-0", !value && "opacity-100")} />No faculty link</CommandItem>
-        </CommandGroup>
-        {options.isLoading ? <div className="flex items-center justify-center gap-2 p-4 text-sm text-muted-foreground"><Spinner />Loading faculty…</div> : null}
-        {!options.isLoading && !options.data?.items.length ? <CommandEmpty>No available faculty found.</CommandEmpty> : null}
-        <CommandGroup>
-          {options.data?.items.map((option: FacultyAccountOption) => <CommandItem key={option.id} value={option.id} onSelect={() => { onChange(option.id); setOpen(false) }}>
-            <Check className={cn("opacity-0", option.id === value && "opacity-100")} /><div className="min-w-0"><p className="truncate">{option.fullName}</p><p className="truncate text-xs text-muted-foreground">{option.employeeNumber} · {option.email}</p></div>
-            {option.status === "INACTIVE" ? <Badge variant="outline" className="ml-auto">Inactive</Badge> : null}
-          </CommandItem>)}
-        </CommandGroup></CommandList>
-      </Command>
-    </PopoverContent>
-  </Popover>
-}
-
-function PasswordResetDialog({ user, onOpenChange }: { user: AdminUser | null; onOpenChange: (open: boolean) => void }) {
-  const mutation = useResetAdminUserPassword()
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<PasswordFormValues>({ resolver: zodResolver(passwordSchema), defaultValues: { newPassword: "", confirmPassword: "" } })
-  async function submit(values: PasswordFormValues) {
-    if (!user) return
-    try {
-      await mutation.mutateAsync({ id: user.id, newPassword: values.newPassword })
-      toast.success(`Password reset for ${user.fullName}`)
-      reset(); onOpenChange(false)
-    } catch (error) { toast.error(messageFor(error, "Unable to reset password")) }
-  }
-  function handleOpenChange(open: boolean) {
-    if (!open) reset()
-    onOpenChange(open)
-  }
-  return <Dialog open={user !== null} onOpenChange={handleOpenChange}><DialogContent className="sm:max-w-md">
-    <DialogHeader><DialogTitle>Reset password</DialogTitle><DialogDescription>Set a temporary password for {user?.fullName}. All refresh sessions will be revoked.</DialogDescription></DialogHeader>
-    <form className="flex flex-col gap-5" onSubmit={handleSubmit(submit)}><FieldGroup>
-      <Field data-invalid={!!errors.newPassword}><FieldLabel htmlFor="newPassword">New password</FieldLabel><Input id="newPassword" type="password" autoComplete="new-password" aria-invalid={!!errors.newPassword} {...register("newPassword")} /><FieldError>{errors.newPassword?.message}</FieldError></Field>
-      <Field data-invalid={!!errors.confirmPassword}><FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel><Input id="confirmPassword" type="password" autoComplete="new-password" aria-invalid={!!errors.confirmPassword} {...register("confirmPassword")} /><FieldError>{errors.confirmPassword?.message}</FieldError></Field>
-    </FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button><Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? <Spinner data-icon="inline-start" /> : null}Reset password</Button></DialogFooter></form>
-  </DialogContent></Dialog>
-}
-
-function RolesPermissionsTab() {
-  const roles = useRoles()
-  const permissions = usePermissions()
-  const [selectedRoleId, setSelectedRoleId] = useState<string>()
-  const selectedRole = roles.data?.find((role) => role.id === selectedRoleId) ?? roles.data?.[0]
-  if (roles.isError || permissions.isError) return <Alert variant="destructive"><LockKeyhole /><AlertTitle>Unable to load access controls</AlertTitle><AlertDescription>{messageFor(roles.error ?? permissions.error, "Try refreshing the page.")}</AlertDescription></Alert>
-  if (roles.isLoading || permissions.isLoading) return <div className="grid gap-4 lg:grid-cols-[16rem_1fr]"><Skeleton className="h-96"/><Skeleton className="h-96"/></div>
-  return <div className="grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
-    <div className="flex flex-col gap-2 rounded-lg border p-2" aria-label="Roles">
-      {roles.data?.map((role) => <Button key={role.id} variant={selectedRole?.id === role.id ? "secondary" : "ghost"} className="h-auto justify-start px-3 py-2 text-left" onClick={() => setSelectedRoleId(role.id)}>
-        <span className="min-w-0"><span className="block truncate font-medium">{readable(role.name)}</span><span className="block truncate text-xs font-normal text-muted-foreground">{role.permissions.length} permissions</span></span>
-      </Button>)}
-    </div>
-    {selectedRole ? <RolePermissionEditor key={`${selectedRole.id}-${selectedRole.permissions.map((permission) => permission.id).join("-")}`} role={selectedRole} permissions={permissions.data ?? []} /> : null}
-  </div>
-}
-
-function RolePermissionEditor({ role, permissions }: { role: Role; permissions: Permission[] }) {
-  const mutation = useUpdateRolePermissions()
-  const [selected, setSelected] = useState(() => new Set(role.permissions.map((permission) => permission.id)))
-  const locked = role.name === "SUPER_ADMIN"
-  const groups = useMemo(() => {
-    const result = new Map<string, Permission[]>()
-    permissions.forEach((permission) => {
-      const prefix = permission.name.startsWith("ACADEMIC_SETUP") ? "ACADEMIC_SETUP" : permission.name.split("_")[0]
-      result.set(prefix, [...(result.get(prefix) ?? []), permission])
-    })
-    return [...result.entries()].sort(([left], [right]) => left.localeCompare(right))
-  }, [permissions])
-  const changed = selected.size !== role.permissions.length || role.permissions.some((permission) => !selected.has(permission.id))
-  async function save() {
-    try { await mutation.mutateAsync({ id: role.id, permissionIds: [...selected] }); toast.success(`${readable(role.name)} permissions updated`) }
-    catch (error) { toast.error(messageFor(error, "Unable to update permissions")) }
-  }
-  return <div className="flex flex-col gap-5 rounded-lg border p-4 md:p-6">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-lg font-semibold">{readable(role.name)}</h2><p className="text-sm text-muted-foreground">{role.description}</p></div>
-      {!locked ? <Button disabled={!changed || mutation.isPending} onClick={() => void save()}>{mutation.isPending ? <Spinner data-icon="inline-start" /> : null}Save permissions</Button> : null}</div>
-    {locked ? <Alert><ShieldCheck /><AlertTitle>System-managed role</AlertTitle><AlertDescription>SUPER_ADMIN always retains full access. Its permissions are read-only to prevent administrative lockout.</AlertDescription></Alert> : null}
-    <div className="grid gap-6 xl:grid-cols-2">
-      {groups.map(([group, items]) => <FieldSet key={group} disabled={locked}><FieldLegend>{readable(group)}</FieldLegend><FieldGroup data-slot="checkbox-group">
-        {items.map((permission) => <Field key={permission.id} orientation="horizontal" data-disabled={locked}>
-          <Checkbox id={`permission-${role.id}-${permission.id}`} disabled={locked} checked={selected.has(permission.id)} onCheckedChange={(checked) => setSelected((current) => { const next = new Set(current); if (checked) next.add(permission.id); else next.delete(permission.id); return next })} />
-          <FieldContent><FieldLabel htmlFor={`permission-${role.id}-${permission.id}`}>{readable(permission.name)}</FieldLabel><FieldDescription>{permission.description}</FieldDescription></FieldContent>
-        </Field>)}
-      </FieldGroup></FieldSet>)}
-    </div>
-  </div>
 }

@@ -45,6 +45,8 @@ export type Role = {
   name: string
   description: string
   permissions: Permission[]
+  version: number
+  protectedRole: boolean
 }
 
 export type AdminUser = {
@@ -53,8 +55,25 @@ export type AdminUser = {
   email: string
   fullName: string
   active: boolean
+  accountType: "SYSTEM" | "FACULTY" | "STUDENT"
   facultyId?: string
+  employeeNumber?: string
   facultyName?: string
+  facultyEmail?: string
+  studentId?: string
+  studentNumber?: string
+  studentName?: string
+  studentEmail?: string
+  identitySyncStatus:
+    "SYNCED" | "MISMATCH" | "EMAIL_CONFLICT" | "DOMAIN_EMAIL_MISSING"
+  mustChangePassword: boolean
+  temporaryPasswordExpiresAt?: string
+  locked: boolean
+  lockedUntil?: string
+  lastLoginAt?: string
+  activeSessionCount: number
+  protectedAccount: boolean
+  version: number
   roles: Role[]
   createdAt: string
   updatedAt: string
@@ -64,9 +83,62 @@ export type UserAccountRequest = {
   username: string
   email: string
   fullName: string
-  initialPassword?: string
   roleIds: string[]
   facultyId?: string
+  version?: number
+  auditReason: string
+}
+
+export type ProvisionedUser = {
+  account: AdminUser
+  temporaryPassword: string
+  expiresAt: string
+}
+export type AccountDirectorySummary = {
+  total: number
+  active: number
+  inactive: number
+  locked: number
+  forcedChange: number
+  system: number
+  faculty: number
+  student: number
+}
+export type AccountSession = {
+  id: string
+  current: boolean
+  userAgent?: string
+  createdIp?: string
+  lastIp?: string
+  createdAt: string
+  lastUsedAt: string
+  idleExpiresAt: string
+  absoluteExpiresAt: string
+  revokedAt?: string
+  revokedReason?: string
+}
+export type IdentityConflict = {
+  userId: string
+  username: string
+  accountType: "FACULTY" | "STUDENT"
+  accountName: string
+  authoritativeName: string
+  accountEmail: string
+  authoritativeEmail: string
+  conflictingUserId?: string
+  status: string
+  version: number
+}
+export type SecurityActivity = {
+  id: string
+  action: string
+  module: string
+  entityType?: string
+  entityId?: string
+  newValue?: Record<string, unknown>
+  ipAddress?: string
+  userAgent?: string
+  createdAt: string
 }
 
 export type FacultyAccountOption = {
@@ -566,7 +638,13 @@ export type Schedule = {
   identityLocked: boolean
   roomSummary: string
   warnings: { code: string; message: string; requiresOverride: boolean }[]
-  latestChange?: { id: string; action: string; reason?: string; actorName?: string; changedAt: string }
+  latestChange?: {
+    id: string
+    action: string
+    reason?: string
+    actorName?: string
+    changedAt: string
+  }
   meetings: Meeting[]
 }
 export type ScheduleRequest = {
@@ -579,11 +657,68 @@ export type ScheduleRequest = {
   meetings: Meeting[]
   expectedVersion?: number
 }
-export type ScheduleHistory = { id:string; scheduleId:string; action:string; reason?:string; actorName?:string; changedAt:string; acknowledgedWarnings:string[] }
-export type FacultyLoad = { facultyId:string; facultyName:string; facultyType:string; activeClasses:number; confirmedStudents:number; weeklyContactHours:number; maximumWeeklyContactHours?:number; maximumActiveClasses?:number; remainingHours?:number; overloaded:boolean; policyConfigured:boolean }
-export type RoomAvailability = { roomId:string; roomCode:string; roomName:string; capacity?:number; building?:string; roomType?:string; dayOfWeek?:string; occupiedPeriods:{scheduleId:string;startTime:string;endTime:string;courseCode:string;sectionCode:string}[] }
-export type ScheduleLoadPolicy = { id:string; schoolYearId:string; schoolYear:string; semesterId:string; semesterName:string; facultyType?:FacultyType; maximumWeeklyContactHours:number; maximumActiveClasses?:number; active:boolean }
-export type ScheduleCopyPreview = { executable:boolean; globalIssues:string[]; items:{sourceScheduleId:string;targetSectionId?:string;courseCode?:string;sourceSectionCode?:string;targetSectionCode?:string;copyable:boolean;issues:string[]}[] }
+export type ScheduleHistory = {
+  id: string
+  scheduleId: string
+  action: string
+  reason?: string
+  actorName?: string
+  changedAt: string
+  acknowledgedWarnings: string[]
+}
+export type FacultyLoad = {
+  facultyId: string
+  facultyName: string
+  facultyType: string
+  activeClasses: number
+  confirmedStudents: number
+  weeklyContactHours: number
+  maximumWeeklyContactHours?: number
+  maximumActiveClasses?: number
+  remainingHours?: number
+  overloaded: boolean
+  policyConfigured: boolean
+}
+export type RoomAvailability = {
+  roomId: string
+  roomCode: string
+  roomName: string
+  capacity?: number
+  building?: string
+  roomType?: string
+  dayOfWeek?: string
+  occupiedPeriods: {
+    scheduleId: string
+    startTime: string
+    endTime: string
+    courseCode: string
+    sectionCode: string
+  }[]
+}
+export type ScheduleLoadPolicy = {
+  id: string
+  schoolYearId: string
+  schoolYear: string
+  semesterId: string
+  semesterName: string
+  facultyType?: FacultyType
+  maximumWeeklyContactHours: number
+  maximumActiveClasses?: number
+  active: boolean
+}
+export type ScheduleCopyPreview = {
+  executable: boolean
+  globalIssues: string[]
+  items: {
+    sourceScheduleId: string
+    targetSectionId?: string
+    courseCode?: string
+    sourceSectionCode?: string
+    targetSectionCode?: string
+    copyable: boolean
+    issues: string[]
+  }[]
+}
 export type ScheduleConflict = {
   conflictType: string
   scheduleId: string
@@ -760,7 +895,13 @@ export interface Section {
 }
 
 export type AssessmentStatus =
-  "UNPAID" | "PARTIAL" | "PAID" | "CREDIT_BALANCE" | "CANCEL_PENDING" | "CANCELLED" | "REFUNDED"
+  | "UNPAID"
+  | "PARTIAL"
+  | "PAID"
+  | "CREDIT_BALANCE"
+  | "CANCEL_PENDING"
+  | "CANCELLED"
+  | "REFUNDED"
 export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "E_WALLET" | "CHECK"
 export type PaymentStatus = "POSTED" | "VOIDED"
 export type FeeCategory = "TUITION" | "LABORATORY" | "MISCELLANEOUS" | "OTHER"

@@ -12,7 +12,8 @@ public record UserRequest(
         @NotBlank @Size(max = 80) String username,
         @NotBlank @Email @Size(max = 120) String email,
         @NotBlank @Size(max = 255) String fullName,
-        @Size(min = 8, max = 120) String initialPassword,
         @NotEmpty Set<UUID> roleIds,
-        UUID facultyId
+        UUID facultyId,
+        Long version,
+        @NotBlank @Size(max = 500) String auditReason
 ) {}
