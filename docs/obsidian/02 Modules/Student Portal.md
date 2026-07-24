@@ -43,7 +43,7 @@ Provision student account → force password change → enter portal → use ena
 
 ## Frontend Implementation
 
-Routes under `/student`: dashboard, enrollment, schedule, academics, finance, announcements, documents/requests, and profile. Shared credential/session management uses `/account/security`; `/student/account/password` redirects there. Registrar administration uses `/admin/student-portal`.
+Routes under `/student`: dashboard, enrollment, schedule, academics, finance, announcements, documents/requests, and profile. Shared credential/session management uses `/account/security`; `/student/account/password` redirects there. The shell follows [[Frontend Design System]] with the shared 15 rem collapsible navigation, 72 px sticky header, semantic colors, and compact controls while preserving student-only labels and ownership rules. Registrar administration uses `/admin/student-portal`.
 
 ## Backend Implementation
 
@@ -75,3 +75,4 @@ Finance receipt: `GET /api/v1/student/me/payments/{paymentId}/receipt`.
 - [[Academic Exceptions]]
 - [[Scheduling]]
 - [[Users and Accounts]]
+- [[Frontend Design System]]

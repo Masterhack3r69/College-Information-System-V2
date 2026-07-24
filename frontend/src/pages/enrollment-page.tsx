@@ -473,7 +473,7 @@ export function EnrollmentPage() {
       case "CONFIRMED":
         return (
           <Badge
-            className="border-emerald-600/20 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+            className="border-success-foreground/20 bg-success text-success-foreground hover:bg-success/80"
             variant="outline"
           >
             CONFIRMED
@@ -498,10 +498,10 @@ export function EnrollmentPage() {
   )
 
   return (
-    <div className="mx-auto max-w-[1540px] p-4 md:p-6 lg:p-7">
+    <div className="mx-auto max-w-[1540px] p-4 sm:p-6 lg:p-8">
       <div className="mb-6 flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[#0b1f3a]">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Enrollment Workspace
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -600,10 +600,10 @@ export function EnrollmentPage() {
                       setYearLevelOverride(undefined)
                       setSectionChoice("")
                     }}
-                    className="flex w-full items-center justify-between border-b px-4 py-3 text-left last:border-0 hover:bg-slate-50"
+                    className="flex w-full items-center justify-between border-b px-4 py-3 text-left last:border-0 hover:bg-surface"
                   >
                     <span>
-                      <b className="font-medium text-[#0b1f3a]">{s.fullName}</b>
+                      <b className="font-medium text-foreground">{s.fullName}</b>
                       <span className="ml-3 text-sm text-muted-foreground">
                         {s.studentNumber} · {s.programCode}
                       </span>
@@ -896,7 +896,7 @@ export function EnrollmentPage() {
                     return (
                       <TableRow key={item.id}>
                         <TableCell>
-                          <p className="text-sm font-semibold text-[#0b1f3a]">
+                          <p className="text-sm font-semibold text-foreground">
                             {item.studentName}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -927,7 +927,7 @@ export function EnrollmentPage() {
                               onClick={() => setInspectingId(item.id)}
                               title="Inspect Details"
                             >
-                              <Eye className="mr-1 h-4 w-4 text-[#0b1f3a]" />
+                              <Eye className="mr-1 h-4 w-4 text-foreground" />
                               Inspect
                             </Button>
 
@@ -948,7 +948,7 @@ export function EnrollmentPage() {
                                   setActiveTab("builder")
                                 }}
                                 title="Resume Draft"
-                                className="text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                                className="text-info-foreground hover:bg-info hover:text-info-foreground"
                               >
                                 <Play className="mr-1 h-4 w-4" />
                                 Resume
@@ -1076,8 +1076,8 @@ export function EnrollmentPage() {
           ) : inspectingEnrollment.data ? (
             <div className="mt-4 space-y-6">
               {/* Student details and Academic profile */}
-              <section className="rounded-lg border bg-slate-50/50 p-4">
-                <h3 className="mb-3 text-sm font-semibold text-[#0b1f3a]">
+              <section className="rounded-lg border bg-surface p-4">
+                <h3 className="mb-3 text-sm font-semibold text-foreground">
                   Student Details & Academic Profile
                 </h3>
                 <div className="grid gap-4 text-sm sm:grid-cols-2 md:grid-cols-3">
@@ -1165,7 +1165,7 @@ export function EnrollmentPage() {
 
               {/* Enrolled subjects in a table */}
               <section className="overflow-hidden rounded-lg border">
-                <div className="border-b bg-slate-50 px-4 py-2 text-sm font-medium text-[#0b1f3a]">
+                <div className="border-b bg-surface px-4 py-2 text-sm font-medium text-foreground">
                   Enrolled Subjects
                 </div>
                 <Table>
@@ -1223,27 +1223,27 @@ export function EnrollmentPage() {
                     )}
                   </TableBody>
                 </Table>
-                <div className="flex justify-between border-t bg-slate-50/50 px-4 py-3 text-sm font-semibold">
+                <div className="flex justify-between border-t bg-surface px-4 py-3 text-sm font-semibold">
                   <span>Total Units</span>
                   <span>{inspectingEnrollment.data.totalCreditUnits}</span>
                 </div>
               </section>
 
-              <section className="rounded-lg border bg-slate-50/50 p-4">
-                <h3 className="mb-3 text-sm font-semibold text-[#0b1f3a]">
+              <section className="rounded-lg border bg-surface p-4">
+                <h3 className="mb-3 text-sm font-semibold text-foreground">
                   Status History
                 </h3>
                 <div className="space-y-4">
                   {enrollmentHistory.data?.map((entry) => (
                     <div
                       key={entry.id}
-                      className="relative pb-2 pl-6 before:absolute before:top-2 before:bottom-0 before:left-2 before:w-0.5 before:bg-slate-200 last:before:hidden"
+                      className="relative pb-2 pl-6 before:absolute before:top-2 before:bottom-0 before:left-2 before:w-0.5 before:bg-muted last:before:hidden"
                     >
-                      <div className="absolute top-1 left-0 flex h-4 w-4 items-center justify-center rounded-full border border-[#0f7d82] bg-white">
-                        <div className="h-1.5 w-1.5 rounded-full bg-[#0f7d82]" />
+                      <div className="absolute top-1 left-0 flex h-4 w-4 items-center justify-center rounded-full border border-primary bg-background">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-xs font-semibold text-slate-700">
+                        <div className="text-xs font-semibold text-foreground">
                           {entry.toStatus.replaceAll("_", " ")}
                         </div>
                         <time className="text-[10px] text-muted-foreground">
@@ -1301,7 +1301,7 @@ export function EnrollmentPage() {
               ].some(
                 (issue) => issue.code === "ACADEMIC_POLICY_APPROVAL_REQUIRED"
               ) ? (
-                <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+                <section className="rounded-lg border border-warning-foreground/20 bg-warning/70 p-4">
                   <h3 className="flex items-center gap-2 text-sm font-semibold">
                     <KeyRound className="size-4" />
                     Academic-policy approval
@@ -1336,7 +1336,7 @@ export function EnrollmentPage() {
 
               {/* Download buttons (only if status is CONFIRMED) */}
               {inspectingEnrollment.data.status === "CONFIRMED" && (
-                <section className="flex flex-col gap-3 rounded-lg border bg-slate-50/50 p-4 sm:flex-row">
+                <section className="flex flex-col gap-3 rounded-lg border bg-surface p-4 sm:flex-row">
                   <Button
                     variant="outline"
                     className="flex-1"
@@ -1398,7 +1398,7 @@ export function EnrollmentPage() {
               not stored in plaintext and will not be shown again.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 rounded-lg border bg-slate-50 p-4 text-sm">
+          <div className="grid gap-3 rounded-lg border bg-surface p-4 text-sm">
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Username</span>
               <code>{provisionedCredentials?.username}</code>
@@ -1517,11 +1517,11 @@ function StudentContext({
     <>
       <section className="flex items-center justify-between rounded-lg border p-4">
         <div className="flex items-center gap-4">
-          <div className="grid size-11 place-items-center rounded-full border bg-slate-50">
-            <UserRound className="size-5 text-[#0b315c]" />
+          <div className="grid size-11 place-items-center rounded-full border bg-surface">
+            <UserRound className="size-5 text-foreground" />
           </div>
           <div>
-            <h2 className="font-semibold text-[#0b1f3a]">
+            <h2 className="font-semibold text-foreground">
               {student.personal.fullName}
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -1540,7 +1540,7 @@ function StudentContext({
       </section>
 
       <section className="rounded-lg border p-4">
-        <h3 className="mb-4 text-sm font-semibold text-[#0b1f3a]">
+        <h3 className="mb-4 text-sm font-semibold text-foreground">
           Academic Profile
         </h3>
         <dl className="grid gap-4 text-sm sm:grid-cols-3 lg:grid-cols-5">
@@ -1630,7 +1630,7 @@ function ScheduleTable({
     <section className="overflow-hidden rounded-lg border">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold text-[#0b1f3a]">
+          <h2 className="text-sm font-semibold text-foreground">
             Available Class Schedules
           </h2>
           <p className="text-xs text-muted-foreground">
@@ -1648,7 +1648,7 @@ function ScheduleTable({
       </div>
 
       {showFilters && (
-        <div className="grid grid-cols-1 gap-3 border-b bg-slate-50 p-4 sm:grid-cols-2 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 border-b bg-surface p-4 sm:grid-cols-2 md:grid-cols-4">
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-muted-foreground">
               Course Code / Title
@@ -1657,7 +1657,7 @@ function ScheduleTable({
               value={filterCourse}
               onChange={(e) => setFilterCourse(e.target.value)}
               placeholder="Filter course..."
-              className="h-8 bg-white text-xs"
+              className="h-8 bg-background text-xs"
             />
           </div>
           <div className="space-y-1">
@@ -1668,7 +1668,7 @@ function ScheduleTable({
               value={filterSection}
               onChange={(e) => setFilterSection(e.target.value)}
               placeholder="Filter section..."
-              className="h-8 bg-white text-xs"
+              className="h-8 bg-background text-xs"
             />
           </div>
           <div className="space-y-1">
@@ -1676,7 +1676,7 @@ function ScheduleTable({
               Day of Week
             </label>
             <Select value={filterDay} onValueChange={setFilterDay}>
-              <SelectTrigger className="h-8 bg-white text-xs">
+              <SelectTrigger className="h-8 bg-background text-xs">
                 <SelectValue placeholder="All Days" />
               </SelectTrigger>
               <SelectContent>
@@ -1699,7 +1699,7 @@ function ScheduleTable({
               value={filterAvailability}
               onValueChange={setFilterAvailability}
             >
-              <SelectTrigger className="h-8 bg-white text-xs">
+              <SelectTrigger className="h-8 bg-background text-xs">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
@@ -1777,8 +1777,8 @@ function ScheduleTable({
                       <span
                         className={
                           s.availableSeats < 5
-                            ? "font-semibold text-amber-600"
-                            : "font-semibold text-emerald-600"
+                            ? "font-semibold text-warning-foreground"
+                            : "font-semibold text-success-foreground"
                         }
                       >
                         {s.availableSeats} / {s.capacity}
@@ -1786,7 +1786,7 @@ function ScheduleTable({
                     </TableCell>
                     <TableCell>
                       {isSelected ? (
-                        <Badge className="bg-emerald-600 font-medium text-white">
+                        <Badge className="bg-success-foreground font-medium text-white">
                           Selected
                         </Badge>
                       ) : isFull ? (
@@ -1794,14 +1794,14 @@ function ScheduleTable({
                       ) : hasConflict ? (
                         <Badge
                           variant="outline"
-                          className="border-amber-500 bg-amber-50 font-medium text-amber-600"
+                          className="border-warning-foreground/30 bg-warning font-medium text-warning-foreground"
                         >
                           Conflict
                         </Badge>
                       ) : (
                         <Badge
                           variant="outline"
-                          className="border-emerald-500 bg-emerald-50 font-medium text-emerald-600"
+                          className="border-success-foreground/30 bg-success font-medium text-success-foreground"
                         >
                           Available
                         </Badge>
@@ -1861,7 +1861,7 @@ function ValidationPanel({
         </Alert>
       )}
       {validation.warnings.length > 0 && (
-        <Alert className="border-amber-200 text-amber-800">
+        <Alert className="border-warning-foreground/20 text-warning-foreground">
           <TriangleAlert />
           <AlertTitle>Warnings ({validation.warnings.length})</AlertTitle>
           <AlertDescription>
@@ -1874,7 +1874,7 @@ function ValidationPanel({
         </Alert>
       )}
       {validation.valid && (
-        <Alert className="border-emerald-200 text-emerald-800">
+        <Alert className="border-success-foreground/20 text-success-foreground">
           <CheckCircle2 />
           <AlertTitle>Enrollment is valid</AlertTitle>
           <AlertDescription>No blocking issues were found.</AlertDescription>
@@ -1903,7 +1903,7 @@ function EnrollmentSummary({
     <div className="sticky top-5 space-y-4">
       <section className="rounded-lg border p-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-[#0b1f3a]">Enrollment Summary</h2>
+          <h2 className="font-semibold text-foreground">Enrollment Summary</h2>
           {enrollment && <Badge>{enrollment.subjectCount}</Badge>}
         </div>
 

@@ -76,7 +76,7 @@
 
 - Severity: Medium
 - Module: Frontend / Testing
-- Current behavior: Pre-existing repo-wide ESLint errors and warnings remain outside the Finance build gate.
+- Current behavior: The 2026-07-24 repo-wide run reports 29 errors and four warnings from existing React Compiler effect rules, explicit `any` usage, Fast Refresh export rules, and E2E cleanup. The changed shell/page/design-system target passes ESLint.
 - Expected behavior: ESLint exits successfully with an agreed warning policy.
 - Status: Open.
 
@@ -98,7 +98,7 @@
 
 - Severity: Low
 - Module: Frontend
-- Current behavior: `npm run build` passes but reports an approximately 3.1 MB pre-gzip main chunk. Finance itself is route-lazy.
+- Current behavior: `npm run build` passes but reports an approximately 3.14 MB pre-gzip main chunk. Finance and several portal pages are route-lazy.
 - Status: Performance optimization.
 
 ## Local Development Defaults Are Unsafe for Production

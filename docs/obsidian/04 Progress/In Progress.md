@@ -1,5 +1,28 @@
 # In Progress
 
+## Frontend Design System Refinement
+
+### Completed
+
+- Semantic institutional palette, typography hierarchy, 8 px radius, spacing, focus, control, table, badge, card, dialog, and responsive tokens.
+- Reusable page composition primitives and application-wide removal of hard-coded JSX palette utilities.
+- Shared 15 rem sidebar and 72 px sticky header across Admin, Faculty, and Student shells; grouped administrative navigation without changing permission filtering.
+- Responsive Students list and Create Student Record dialog, including a non-shrinking scrollable mobile tab strip.
+- Shared icon-free line tabs with consistent active state, spacing, and narrow-screen overflow across page and workspace tab sets.
+- Frontend typecheck/build, targeted lint, live Docker desktop/375 px browser QA, and focused cross-role scheduling verification.
+
+### Remaining
+
+- Migrate fifteen legacy native selects to shared components when their owning forms are next changed.
+- Split the approximately 3.14 MB main production chunk.
+- Resolve repo-wide legacy ESLint debt and extend seeded full-stack cross-role browser coverage.
+
+### Related
+
+- [[Frontend Design System]]
+- [[Frontend Structure]]
+- [[Known Issues]]
+
 ## Users and Accounts Security Upgrade
 
 ### Completed

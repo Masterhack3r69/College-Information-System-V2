@@ -9,12 +9,12 @@ export default function StudentAnnouncementsPage() {
   const notices = useStudentAnnouncements(),
     materials = useStudentMaterials()
   return (
-    <div className="mx-auto max-w-[1180px] p-5 md:p-8">
-      <h1 className="flex items-center gap-3 text-3xl font-semibold text-[#092f66]">
+    <div className="mx-auto max-w-[1180px] p-4 sm:p-6 lg:p-8">
+      <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">
         <Bell />
         Announcements
       </h1>
-      <p className="mt-2 text-slate-600">
+      <p className="mt-2 text-muted-foreground">
         Academic notices and published content from your classes.
       </p>
       <div className="mt-7 grid gap-6 lg:grid-cols-[1.2fr_.8fr]">
@@ -27,12 +27,12 @@ export default function StudentAnnouncementsPage() {
               <article key={x.id} className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="font-semibold">{x.title}</h2>
-                  <span className="text-xs text-slate-500">{x.source}</span>
+                  <span className="text-xs text-muted-foreground">{x.source}</span>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   {x.body}
                 </p>
-                <p className="mt-2 text-xs text-slate-400">
+                <p className="mt-2 text-xs text-muted-foreground">
                   {new Date(x.publishedAt).toLocaleString()}
                 </p>
               </article>
@@ -48,7 +48,7 @@ export default function StudentAnnouncementsPage() {
             {materials.data?.map((x) => (
               <article key={x.id} className="p-4">
                 <p className="font-medium">{x.title}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {x.courseCode} · {x.filename}
                 </p>
                 <Button

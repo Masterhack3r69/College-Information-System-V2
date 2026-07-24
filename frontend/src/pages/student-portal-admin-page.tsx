@@ -192,8 +192,8 @@ export function StudentPortalAdminPage() {
     toast.success("Fulfilled document is ready for the student")
   }
   return (
-    <div className="p-5 md:p-8">
-      <h1 className="flex items-center gap-3 text-3xl font-semibold">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
         <GraduationCap />
         Student Portal Administration
       </h1>

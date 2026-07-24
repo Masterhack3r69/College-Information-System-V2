@@ -20,6 +20,11 @@ import type {
 } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -35,7 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -55,6 +60,16 @@ import { useCurricula } from "@/hooks/use-curriculum"
 import { CascadingAddressSelector, type AddressValues } from "@/components/cascading-address-selector"
 import { useAcademicEvaluations } from "@/hooks/use-academic-exceptions"
 import type { AcademicPlan } from "@/hooks/use-student-portal"
+import {
+  Page,
+  PageActions,
+  PageDescription,
+  PageHeader,
+  PageHeading,
+  PageSurface,
+  PageTitle,
+  PageToolbar,
+} from "@/components/page-layout"
 
 function DualAddressFields({
   current,
@@ -74,7 +89,7 @@ function DualAddressFields({
   return (
     <div className="col-span-full space-y-4 border-t pt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h4 className="text-sm font-medium text-[#0b1f3a]">Addresses</h4>
+        <h4 className="text-sm font-medium text-foreground">Addresses</h4>
         <div className="flex items-center gap-2">
           <Checkbox
             id="permanent-same-as-current"
@@ -87,12 +102,12 @@ function DualAddressFields({
         </div>
       </div>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <section className="rounded-lg border bg-slate-50/60 p-4">
-          <h5 className="mb-4 text-sm font-semibold text-[#0b1f3a]">Current Address</h5>
+        <section className="rounded-lg border bg-surface p-4">
+          <h5 className="mb-4 text-sm font-semibold text-foreground">Current Address</h5>
           <CascadingAddressSelector values={current} onChange={onCurrentChange} compact />
         </section>
-        <section className="rounded-lg border bg-slate-50/60 p-4">
-          <h5 className="mb-4 text-sm font-semibold text-[#0b1f3a]">Permanent Address</h5>
+        <section className="rounded-lg border bg-surface p-4">
+          <h5 className="mb-4 text-sm font-semibold text-foreground">Permanent Address</h5>
           <CascadingAddressSelector
             values={permanent}
             onChange={onPermanentChange}
@@ -374,23 +389,27 @@ export function StudentsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-7">
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#0b1f3a]">Students</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Search and review registrar student records.</p>
-        </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
-          <UserPlus className="mr-2 h-4 w-4" /> New Student
-        </Button>
-      </div>
+    <Page className="flex flex-col gap-6">
+      <PageHeader>
+        <PageHeading>
+          <PageTitle>Students</PageTitle>
+          <PageDescription>Search and review registrar student records.</PageDescription>
+        </PageHeading>
+        <PageActions>
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <UserPlus data-icon="inline-start" />
+            New Student
+          </Button>
+        </PageActions>
+      </PageHeader>
 
       {/* Filters Bar */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-        <div className="relative col-span-1 sm:col-span-2">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            className="pl-9"
+      <PageToolbar className="grid sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+        <InputGroup className="sm:col-span-2">
+          <InputGroupAddon>
+            <Search />
+          </InputGroupAddon>
+          <InputGroupInput
             placeholder="Search student number, name, or email"
             value={search}
             onChange={(e) => {
@@ -398,7 +417,7 @@ export function StudentsPage() {
               setPage(0)
             }}
           />
-        </div>
+        </InputGroup>
 
         <div>
           <Select
@@ -412,12 +431,14 @@ export function StudentsPage() {
               <SelectValue placeholder="All Programs" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL_PROGRAMS">All Programs</SelectItem>
-              {programs.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.programCode}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectItem value="ALL_PROGRAMS">All Programs</SelectItem>
+                {programs.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.programCode}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -434,13 +455,15 @@ export function StudentsPage() {
               <SelectValue placeholder="All Year Levels" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL_YEARS">All Year Levels</SelectItem>
-              <SelectItem value="1">Year 1</SelectItem>
-              <SelectItem value="2">Year 2</SelectItem>
-              <SelectItem value="3">Year 3</SelectItem>
-              <SelectItem value="4">Year 4</SelectItem>
-              <SelectItem value="5">Year 5</SelectItem>
-              <SelectItem value="6">Year 6</SelectItem>
+              <SelectGroup>
+                <SelectItem value="ALL_YEARS">All Year Levels</SelectItem>
+                <SelectItem value="1">Year 1</SelectItem>
+                <SelectItem value="2">Year 2</SelectItem>
+                <SelectItem value="3">Year 3</SelectItem>
+                <SelectItem value="4">Year 4</SelectItem>
+                <SelectItem value="5">Year 5</SelectItem>
+                <SelectItem value="6">Year 6</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -457,22 +480,24 @@ export function StudentsPage() {
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL_STATUS">All Statuses</SelectItem>
-              <SelectItem value="APPLICANT">APPLICANT</SelectItem>
-              <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-              <SelectItem value="ENROLLED">ENROLLED</SelectItem>
-              <SelectItem value="INACTIVE">INACTIVE</SelectItem>
-              <SelectItem value="DROPPED">DROPPED</SelectItem>
-              <SelectItem value="TRANSFERRED">TRANSFERRED</SelectItem>
-              <SelectItem value="GRADUATED">GRADUATED</SelectItem>
-              <SelectItem value="ARCHIVED">ARCHIVED</SelectItem>
+              <SelectGroup>
+                <SelectItem value="ALL_STATUS">All Statuses</SelectItem>
+                <SelectItem value="APPLICANT">APPLICANT</SelectItem>
+                <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                <SelectItem value="ENROLLED">ENROLLED</SelectItem>
+                <SelectItem value="INACTIVE">INACTIVE</SelectItem>
+                <SelectItem value="DROPPED">DROPPED</SelectItem>
+                <SelectItem value="TRANSFERRED">TRANSFERRED</SelectItem>
+                <SelectItem value="GRADUATED">GRADUATED</SelectItem>
+                <SelectItem value="ARCHIVED">ARCHIVED</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </PageToolbar>
 
       {/* Students Data Table */}
-      <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+      <PageSurface>
         <Table>
           <TableHeader>
             <TableRow>
@@ -487,20 +512,20 @@ export function StudentsPage() {
             {students.isLoading ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-6 w-6 animate-spin mb-2" />
+                  <Loader2 className="mx-auto mb-2 size-6 animate-spin" />
                   Loading students...
                 </TableCell>
               </TableRow>
             ) : students.data?.items.map((s) => (
               <TableRow key={s.id}>
                 <TableCell>
-                  <p className="font-medium text-[#0b1f3a]">{s.fullName}</p>
+                  <p className="font-medium text-foreground">{s.fullName}</p>
                   <p className="text-xs text-muted-foreground">{s.studentNumber} · {s.emailAddress || "No email"}</p>
                 </TableCell>
                 <TableCell>{s.programCode}</TableCell>
                 <TableCell>{s.yearLevel}</TableCell>
                 <TableCell>
-                  <Badge variant={s.status === "ACTIVE" || s.status === "ENROLLED" ? "default" : "secondary"}>
+                  <Badge variant={s.status === "ACTIVE" || s.status === "ENROLLED" ? "info" : "secondary"}>
                     {s.status}
                   </Badge>
                 </TableCell>
@@ -520,15 +545,15 @@ export function StudentsPage() {
             )}
           </TableBody>
         </Table>
-      </div>
+      </PageSurface>
 
       {/* Pagination */}
       {!students.isLoading && (students.data?.totalPages ?? 0) > 1 && (
-        <div className="flex items-center justify-between px-2 py-4">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <p className="text-sm text-muted-foreground">
             Page {page + 1} of {students.data?.totalPages ?? 1} ({students.data?.totalElements ?? 0} total students)
           </p>
-          <div className="flex space-x-2">
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -551,7 +576,7 @@ export function StudentsPage() {
 
       {/* Create Dialog */}
       <CreateStudentDialog isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
-    </div>
+    </Page>
   )
 }
 
@@ -734,15 +759,15 @@ function CreateStudentDialog({ isOpen, onClose }: { isOpen: boolean; onClose: ()
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle className="text-xl text-[#0b1f3a]">Create Student Record</DialogTitle>
+          <DialogTitle>Create Student Record</DialogTitle>
           <DialogDescription>Fill in all fields across sections to register a new student.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
           <Tabs defaultValue="personal" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 bg-slate-100 p-1 rounded-md">
+            <TabsList>
               <TabsTrigger value="personal">Personal</TabsTrigger>
               <TabsTrigger value="academic">Academic</TabsTrigger>
               <TabsTrigger value="contact">Contact</TabsTrigger>
@@ -1078,7 +1103,7 @@ function CreateStudentDialog({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                 />
 
                 <div className="col-span-full border-t pt-4 mt-2">
-                  <h4 className="font-medium text-[#0b1f3a] mb-3 text-sm">Emergency Contact Information</h4>
+                  <h4 className="font-medium text-foreground mb-3 text-sm">Emergency Contact Information</h4>
                 </div>
 
                 <div className="space-y-2">
@@ -1201,7 +1226,7 @@ function CreateStudentDialog({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                 </div>
 
                 <div className="col-span-full border-t pt-4 mt-2">
-                  <h4 className="font-medium text-[#0b1f3a] mb-3 text-sm">Previous Higher Education (for Transferees)</h4>
+                  <h4 className="font-medium text-foreground mb-3 text-sm">Previous Higher Education (for Transferees)</h4>
                 </div>
 
                 <div className="space-y-2">
@@ -1225,7 +1250,7 @@ function CreateStudentDialog({ isOpen, onClose }: { isOpen: boolean; onClose: ()
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
+            <Button type="submit" disabled={isSubmitting} className="bg-primary text-white hover:bg-primary/90">
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Student
             </Button>
@@ -1383,14 +1408,14 @@ export function StudentDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-4 md:p-7">
+    <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
       <Button variant="ghost" className="mb-4" onClick={() => navigate(-1)}>
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to students
       </Button>
 
       <div className="flex flex-col justify-between gap-4 border-b pb-6 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-2xl font-semibold text-[#0b1f3a]">{s.personal.fullName}</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{s.personal.fullName}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {s.personal.studentNumber} · {s.academic.programCode} · Year {s.academic.yearLevel}
           </p>
@@ -1406,7 +1431,7 @@ export function StudentDetailPage() {
       </div>
 
       <Tabs defaultValue="personal" className="mt-6">
-        <TabsList className="h-auto flex-wrap bg-slate-100 p-1 rounded-md">
+        <TabsList>
           <TabsTrigger value="personal">Personal</TabsTrigger>
           <TabsTrigger value="academic">Academic</TabsTrigger>
           <TabsTrigger value="current-enrollment">Current Enrollment</TabsTrigger>
@@ -1420,7 +1445,7 @@ export function StudentDetailPage() {
         {/* PERSONAL DETAILS TAB */}
         <TabsContent value="personal" className="space-y-4 pt-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium text-[#0b1f3a]">Personal Details</h3>
+            <h3 className="text-lg font-medium text-foreground">Personal Details</h3>
             <Button onClick={() => setEditingSection("personal")} variant="outline" size="sm">
               <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
@@ -1431,7 +1456,7 @@ export function StudentDetailPage() {
         {/* ACADEMIC DETAILS TAB */}
         <TabsContent value="academic" className="space-y-4 pt-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium text-[#0b1f3a]">Academic Assignment</h3>
+            <h3 className="text-lg font-medium text-foreground">Academic Assignment</h3>
             <Button onClick={() => setEditingSection("academic")} variant="outline" size="sm">
               <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
@@ -1452,7 +1477,7 @@ export function StudentDetailPage() {
         {/* CONTACT DETAILS TAB */}
         <TabsContent value="contact" className="space-y-4 pt-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium text-[#0b1f3a]">Contact & Emergency details</h3>
+            <h3 className="text-lg font-medium text-foreground">Contact & Emergency details</h3>
             <Button onClick={() => setEditingSection("contact")} variant="outline" size="sm">
               <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
@@ -1463,7 +1488,7 @@ export function StudentDetailPage() {
         {/* FAMILY DETAILS TAB */}
         <TabsContent value="family" className="space-y-4 pt-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium text-[#0b1f3a]">Family Background</h3>
+            <h3 className="text-lg font-medium text-foreground">Family Background</h3>
             <Button onClick={() => setEditingSection("family")} variant="outline" size="sm">
               <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
@@ -1474,7 +1499,7 @@ export function StudentDetailPage() {
         {/* EDUCATIONAL DETAILS TAB */}
         <TabsContent value="education" className="space-y-4 pt-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium text-[#0b1f3a]">Educational Background</h3>
+            <h3 className="text-lg font-medium text-foreground">Educational Background</h3>
             <Button onClick={() => setEditingSection("educational")} variant="outline" size="sm">
               <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
@@ -1510,19 +1535,19 @@ function InfoGrid({ data }: { data?: any }) {
   )
 
   return (
-    <dl className="grid gap-px overflow-hidden rounded-lg border bg-slate-200 sm:grid-cols-2 lg:grid-cols-3">
+    <dl className="grid gap-px overflow-hidden rounded-lg border bg-muted sm:grid-cols-2 lg:grid-cols-3">
       {filtered.map(([k, v]) => (
-        <div key={k} className="bg-white p-4">
+        <div key={k} className="bg-background p-4">
           <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {k.replace(/([A-Z])/g, " $1")}
           </dt>
-          <dd className="mt-1 text-sm font-medium text-[#0b1f3a]">
+          <dd className="mt-1 text-sm font-medium text-foreground">
             {typeof v === "boolean" ? (v ? "Yes" : "No") : String(v).replaceAll("_", " ")}
           </dd>
         </div>
       ))}
       {filtered.length === 0 && (
-        <div className="bg-white p-6 text-center text-sm text-muted-foreground col-span-full">No details provided.</div>
+        <div className="bg-background p-6 text-center text-sm text-muted-foreground col-span-full">No details provided.</div>
       )}
     </dl>
   )
@@ -1541,8 +1566,8 @@ function AcademicRecordsTable({ studentId }: { studentId: string }) {
 
   return (
     <div className="mt-8 space-y-4">
-      <h3 className="text-lg font-medium text-[#0b1f3a]">Academic Records & Grades</h3>
-      <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+      <h3 className="text-lg font-medium text-foreground">Academic Records & Grades</h3>
+      <div className="overflow-hidden rounded-lg border bg-background shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -1559,13 +1584,13 @@ function AcademicRecordsTable({ studentId }: { studentId: string }) {
             {records.map((r) => (
               <TableRow key={r.id}>
                 <TableCell>
-                  <p className="font-medium text-[#0b1f3a]">{r.courseTitle}</p>
+                  <p className="font-medium text-foreground">{r.courseTitle}</p>
                   <p className="text-xs text-muted-foreground">{r.courseCode}</p>
                 </TableCell>
                 <TableCell>
                   {r.creditUnits} (Earned: {r.earnedUnits})
                 </TableCell>
-                <TableCell className="font-semibold text-[#0b1f3a]">
+                <TableCell className="font-semibold text-foreground">
                   {r.finalGrade !== undefined && r.finalGrade !== null ? r.finalGrade.toFixed(2) : "—"}
                 </TableCell>
                 <TableCell>
@@ -1667,13 +1692,13 @@ function DocumentsTab({ studentId }: { studentId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-[#0b1f3a]">Student Documents</h3>
-        <Button onClick={() => setIsUploadOpen(true)} className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
+        <h3 className="text-lg font-medium text-foreground">Student Documents</h3>
+        <Button onClick={() => setIsUploadOpen(true)} className="bg-primary text-white hover:bg-primary/90">
           <FileUp className="mr-2 h-4 w-4" /> Upload Document
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border bg-background shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -1696,7 +1721,7 @@ function DocumentsTab({ studentId }: { studentId: string }) {
               </TableRow>
             ) : docs.map((d) => (
               <TableRow key={d.id}>
-                <TableCell className="font-medium text-[#0b1f3a]">
+                <TableCell className="font-medium text-foreground">
                   {d.documentType.replaceAll("_", " ")}
                 </TableCell>
                 <TableCell>
@@ -1709,7 +1734,7 @@ function DocumentsTab({ studentId }: { studentId: string }) {
                         toast.error("Cannot display preview for this file type.")
                       })
                     }}
-                    className="text-[#0969da] hover:underline"
+                    className="text-primary hover:underline"
                   >
                     {d.fileName}
                   </a>
@@ -1752,7 +1777,7 @@ function DocumentsTab({ studentId }: { studentId: string }) {
       <Dialog open={isUploadOpen} onOpenChange={(open) => !open && setIsUploadOpen(false)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-lg font-medium text-[#0b1f3a]">Upload Student Document</DialogTitle>
+            <DialogTitle className="text-lg font-medium text-foreground">Upload Student Document</DialogTitle>
             <DialogDescription>Upload required documents for verification.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUploadSubmit(onUploadSubmit)} className="space-y-4">
@@ -1785,7 +1810,7 @@ function DocumentsTab({ studentId }: { studentId: string }) {
               <Button type="button" variant="outline" onClick={() => setIsUploadOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
+              <Button type="submit" className="bg-primary text-white hover:bg-primary/90">
                 Upload File
               </Button>
             </DialogFooter>
@@ -1797,7 +1822,7 @@ function DocumentsTab({ studentId }: { studentId: string }) {
       <Dialog open={!!verifyingDoc} onOpenChange={(open) => !open && setVerifyingDoc(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-lg font-medium text-[#0b1f3a]">Verify Document</DialogTitle>
+            <DialogTitle className="text-lg font-medium text-foreground">Verify Document</DialogTitle>
             <DialogDescription>
               Update the verification status of <strong>{verifyingDoc?.fileName}</strong>.
             </DialogDescription>
@@ -1825,7 +1850,7 @@ function DocumentsTab({ studentId }: { studentId: string }) {
               <Button type="button" variant="outline" onClick={() => setVerifyingDoc(null)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
+              <Button type="submit" className="bg-primary text-white hover:bg-primary/90">
                 Update Verification
               </Button>
             </DialogFooter>
@@ -2035,7 +2060,7 @@ function EditSectionDialog({ section, student, isOpen, onClose, onSave }: EditSe
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[#0b1f3a]">Edit {section.toUpperCase()} Information</DialogTitle>
+          <DialogTitle className="text-foreground">Edit {section.toUpperCase()} Information</DialogTitle>
           <DialogDescription>Modify fields below and click save.</DialogDescription>
         </DialogHeader>
 
@@ -2338,7 +2363,7 @@ function EditSectionDialog({ section, student, isOpen, onClose, onSave }: EditSe
                 }}
               />
               <div className="col-span-full border-t pt-2">
-                <h4 className="font-semibold text-[#0b1f3a] text-sm">Emergency Contact Information</h4>
+                <h4 className="font-semibold text-foreground text-sm">Emergency Contact Information</h4>
               </div>
               <div className="space-y-2">
                 <Label>Contact Name</Label>
@@ -2455,7 +2480,7 @@ function EditSectionDialog({ section, student, isOpen, onClose, onSave }: EditSe
                 </div>
               </div>
               <div className="col-span-full border-t pt-2">
-                <h4 className="font-semibold text-[#0b1f3a] text-sm">Previous Higher Education</h4>
+                <h4 className="font-semibold text-foreground text-sm">Previous Higher Education</h4>
               </div>
               <div className="space-y-2">
                 <Label>Previous College</Label>
@@ -2476,7 +2501,7 @@ function EditSectionDialog({ section, student, isOpen, onClose, onSave }: EditSe
             <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting} className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
+            <Button type="submit" disabled={submitting} className="bg-primary text-white hover:bg-primary/90">
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>
@@ -2506,7 +2531,7 @@ function AcademicExceptionsTab({ studentId }: { studentId: string }) {
   </div>
 }
 
-function Summary({ label, value }: { label: string; value: number }) { return <div className="rounded-lg border p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold text-[#0f7d82]">{value}</p></div> }
+function Summary({ label, value }: { label: string; value: number }) { return <div className="rounded-lg border p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold text-primary">{value}</p></div> }
 
 function CurrentEnrollmentTab({ studentId }: { studentId: string }) {
   const { data: enrollment, isLoading } = useStudentLatestEnrollment(studentId)
@@ -2517,8 +2542,8 @@ function CurrentEnrollmentTab({ studentId }: { studentId: string }) {
 
   if (!enrollment) {
     return (
-      <div className="rounded-lg border border-dashed p-8 text-center bg-slate-50/50">
-        <p className="text-sm font-medium text-slate-900">No enrollment recorded for this student.</p>
+      <div className="rounded-lg border border-dashed p-8 text-center bg-surface">
+        <p className="text-sm font-medium text-foreground">No enrollment recorded for this student.</p>
         <p className="text-xs text-muted-foreground mt-1">This student has not been enrolled in any terms yet.</p>
       </div>
     )
@@ -2526,22 +2551,22 @@ function CurrentEnrollmentTab({ studentId }: { studentId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-lg border bg-white shadow-sm p-4">
+      <div className="overflow-hidden rounded-lg border bg-background shadow-sm p-4">
         <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Enrollment Details</h4>
         <dl className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
           <div>
             <dt className="text-xs font-medium text-muted-foreground">Term</dt>
-            <dd className="mt-1 text-sm font-semibold text-[#0b1f3a]">
+            <dd className="mt-1 text-sm font-semibold text-foreground">
               {enrollment.schoolYear} · {enrollment.semesterName}
             </dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-muted-foreground">Year Level</dt>
-            <dd className="mt-1 text-sm font-semibold text-[#0b1f3a]">Year {enrollment.yearLevel}</dd>
+            <dd className="mt-1 text-sm font-semibold text-foreground">Year {enrollment.yearLevel}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-muted-foreground">Section Code</dt>
-            <dd className="mt-1 text-sm font-semibold text-[#0b1f3a]">
+            <dd className="mt-1 text-sm font-semibold text-foreground">
               {enrollment.sectionCode || "—"}
             </dd>
           </div>
@@ -2557,8 +2582,8 @@ function CurrentEnrollmentTab({ studentId }: { studentId: string }) {
       </div>
 
       <div className="space-y-4">
-        <h4 className="text-base font-semibold text-[#0b1f3a]">Enrolled Subjects</h4>
-        <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+        <h4 className="text-base font-semibold text-foreground">Enrolled Subjects</h4>
+        <div className="overflow-hidden rounded-lg border bg-background shadow-sm">
           <Table>
             <TableHeader>
               <TableRow>

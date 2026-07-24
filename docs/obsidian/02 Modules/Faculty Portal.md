@@ -38,7 +38,7 @@ Sign in → portal selected from available portals → open an assigned class �
 
 ## Frontend Implementation
 
-Routes exist under `/faculty`: dashboard, classes, class workspace, schedule, grades, corrections, advising, and profile. Shared password/session management uses `/account/security`; the duplicate profile password form was removed. `/faculty/attendance`, `/faculty/content`, and `/faculty/reports` currently use `FacultySectionIndex`, which redirects to `/faculty/classes`; the actual functions live inside a class workspace.
+Routes exist under `/faculty`: dashboard, classes, class workspace, schedule, grades, corrections, advising, and profile. Shared password/session management uses `/account/security`; the duplicate profile password form was removed. The shell follows [[Frontend Design System]] with the shared 15 rem collapsible navigation, 72 px sticky header, semantic colors, and compact controls while preserving faculty-only labels and permission filtering. `/faculty/attendance`, `/faculty/content`, and `/faculty/reports` currently use `FacultySectionIndex`, which redirects to `/faculty/classes`; the actual functions live inside a class workspace.
 
 ## Backend Implementation
 
@@ -64,3 +64,4 @@ All self-service endpoints are under `/api/v1/faculty/me`, including `/dashboard
 - [[Student Portal]]
 - [[Scheduling]]
 - [[Users and Accounts]]
+- [[Frontend Design System]]

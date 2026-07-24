@@ -185,10 +185,10 @@ export function SectionsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-[#0b1f3a]">Sections</h2>
+          <h2 className="text-xl font-semibold text-foreground">Sections</h2>
           <p className="text-sm text-muted-foreground">Manage sections, year levels, and class organization.</p>
         </div>
-        <Button onClick={openCreateModal} className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
+        <Button onClick={openCreateModal} className="bg-primary text-white hover:bg-primary/90">
           <Plus className="mr-2 h-4 w-4" /> New Section
         </Button>
       </div>
@@ -241,11 +241,11 @@ export function SectionsTab() {
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.sectionCode}</TableCell>
                   <TableCell>{item.programCode || "—"}</TableCell>
-                  <TableCell>{item.curriculumCode || <span className="text-amber-600">Needs setup</span>}</TableCell>
+                  <TableCell>{item.curriculumCode || <span className="text-warning-foreground">Needs setup</span>}</TableCell>
                   <TableCell>{item.schoolYear || "—"}</TableCell>
                   <TableCell>{item.semesterName || "—"}</TableCell>
                   <TableCell>{item.yearLevel}</TableCell>
-                  <TableCell>{item.confirmedCount ?? 0} / {item.maximumCapacity ?? <span className="text-amber-600">Not configured</span>}</TableCell>
+                  <TableCell>{item.confirmedCount ?? 0} / {item.maximumCapacity ?? <span className="text-warning-foreground">Not configured</span>}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <button
@@ -254,7 +254,7 @@ export function SectionsTab() {
                         disabled={statusMutation.isPending}
                         className={cn(
                           "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
-                          item.status === "ACTIVE" ? "bg-[#0b1f3a]" : "bg-input"
+                          item.status === "ACTIVE" ? "bg-primary" : "bg-input"
                         )}
                       >
                         <span
@@ -271,7 +271,7 @@ export function SectionsTab() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEditModal(item)}>
-                      <Edit className="h-4 w-4 text-[#0b1f3a]" />
+                      <Edit className="h-4 w-4 text-foreground" />
                       <span className="sr-only">Edit</span>
                     </Button>
                   </TableCell>
@@ -491,7 +491,7 @@ export function SectionsTab() {
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90" disabled={isSubmitting}>
+              <Button type="submit" className="bg-primary text-white hover:bg-primary/90" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingItem ? "Save Changes" : "Create Section"}
               </Button>

@@ -177,10 +177,10 @@ export function CurriculaTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-[#0b1f3a]">Curricula</h2>
+          <h2 className="text-xl font-semibold text-foreground">Curricula</h2>
           <p className="text-sm text-muted-foreground">Manage academic curriculum structures, term course links, and prerequisites.</p>
         </div>
-        <Button onClick={openCreateModal} className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
+        <Button onClick={openCreateModal} className="bg-primary text-white hover:bg-primary/90">
           <Plus className="mr-2 h-4 w-4" /> New Curriculum
         </Button>
       </div>
@@ -239,10 +239,10 @@ export function CurriculaTab() {
                       <span
                         className={cn(
                           "inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold",
-                          item.status === "ACTIVE" && "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20",
-                          item.status === "DRAFT" && "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20",
-                          item.status === "INACTIVE" && "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20",
-                          item.status === "ARCHIVED" && "bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20"
+                          item.status === "ACTIVE" && "bg-success text-success-foreground ring-1 ring-inset ring-success-foreground/20",
+                          item.status === "DRAFT" && "bg-warning text-warning-foreground ring-1 ring-inset ring-warning-foreground/20",
+                          item.status === "INACTIVE" && "bg-destructive/10 text-destructive ring-1 ring-inset ring-destructive/20",
+                          item.status === "ARCHIVED" && "bg-muted text-muted-foreground ring-1 ring-inset ring-muted-foreground/20"
                         )}
                       >
                         {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
@@ -252,18 +252,18 @@ export function CurriculaTab() {
                       <div className="flex justify-end gap-1">
                         {(item.status === "DRAFT" || item.status === "INACTIVE") && (
                           <Button variant="ghost" size="icon" onClick={() => openActivateModal(item)} title="Activate Curriculum">
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            <CheckCircle2 className="h-4 w-4 text-success-foreground" />
                             <span className="sr-only">Activate</span>
                           </Button>
                         )}
                         <Button variant="ghost" size="icon" asChild title="Open Builder">
                           <Link to={`/setup/curricula/${item.id}`}>
-                            <ExternalLink className="h-4 w-4 text-[#0b1f3a]" />
+                            <ExternalLink className="h-4 w-4 text-foreground" />
                             <span className="sr-only">Open Builder</span>
                           </Link>
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => openEditModal(item)} title="Edit Curriculum">
-                          <Edit className="h-4 w-4 text-[#0b1f3a]" />
+                          <Edit className="h-4 w-4 text-foreground" />
                           <span className="sr-only">Edit</span>
                         </Button>
                       </div>
@@ -450,7 +450,7 @@ export function CurriculaTab() {
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90" disabled={isSubmitting}>
+              <Button type="submit" className="bg-primary text-white hover:bg-primary/90" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingItem ? "Save Changes" : "Create Curriculum"}
               </Button>
@@ -463,7 +463,7 @@ export function CurriculaTab() {
       <Dialog open={isActivateOpen} onOpenChange={setIsActivateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600">
+            <DialogTitle className="flex items-center gap-2 text-warning-foreground">
               <AlertTriangle className="h-5 w-5" /> Activate Curriculum
             </DialogTitle>
             <DialogDescription>
@@ -484,7 +484,7 @@ export function CurriculaTab() {
             </Button>
             <Button
               type="button"
-              className="bg-green-600 text-white hover:bg-green-700"
+              className="bg-success-foreground text-white hover:bg-success-foreground/90"
               onClick={handleActivateConfirm}
               disabled={activateMutation.isPending}
             >

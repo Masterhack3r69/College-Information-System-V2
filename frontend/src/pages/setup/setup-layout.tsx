@@ -19,9 +19,9 @@ const tabs = [
 export function SetupLayout() {
   const { can } = useAuth()
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-7">
+    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[#0b1f3a]">Academic Setup</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Academic Setup</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Configure college departments, programs, courses, faculty, rooms, and academic terms.
         </p>
@@ -37,7 +37,7 @@ export function SetupLayout() {
                 cn(
                   "border-b-2 px-1 pb-3 text-sm font-medium transition-all duration-200 whitespace-nowrap",
                   isActive
-                    ? "border-[#0b1f3a] text-[#0b1f3a] font-semibold"
+                    ? "border-primary text-foreground font-semibold"
                     : "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground"
                 )
               }

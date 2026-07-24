@@ -7,6 +7,7 @@
 - `src/hooks`: TanStack Query hooks grouped by domain.
 - `src/lib`: API client, authentication context, types, and utilities.
 - `src/components/ui`: shadcn/ui primitives.
+- `src/components/page-layout.tsx`: shared page headers, actions, toolbars, and bordered data surfaces.
 
 ## Routing and Layouts
 
@@ -34,15 +35,22 @@ Legacy top-level admin paths redirect under `/admin`. Forced-password-change rou
 
 Administrative links are filtered by permission; route guards also block direct navigation. Faculty and student shells provide portal-specific menus and optional portal switching.
 
+All three portal shells now share a 15 rem collapsible sidebar, 72 px sticky header, institutional brand treatment, compact navigation controls, and consistent account actions. Administrative navigation is grouped by workflow while retaining the existing permission filters and route guards.
+
 Users & Accounts is route-lazy and provides the unified directory, account detail, one-time credential acknowledgement, protected RBAC, and identity-conflict workspaces. Every shell links to the shared responsive Account Security center; the legacy student password route redirects and the faculty duplicate form was removed.
 
 The administrative header term selector is shared with enrollment and schedules. Finance and grade queues inherit it until a page-specific filter is selected.
+
+## Visual System
+
+Semantic palette, typography, spacing, radii, focus states, control heights, tables, dialogs, badges, cards, and responsive page composition are documented in [[Frontend Design System]]. Application pages should use semantic tokens instead of one-off Tailwind palette values.
 
 ## Current Limitations
 
 - The production build reports a main JavaScript chunk above 3 MB before gzip and warns about chunks over 500 kB.
 - Faculty attendance/content/report top-level routes redirect to classes.
 - Focused Users & Accounts browser coverage includes Super Admin, Account Admin, unauthorized, forced-change, login throttle, and 375 px security-center flows. Full seeded cross-role coverage remains incomplete.
+- Fifteen legacy native selects use the global semantic control treatment; migrate them to the shared `NativeSelect` or Radix `Select` when their forms are next changed.
 
 ## Related Notes
 
@@ -50,3 +58,4 @@ The administrative header term selector is shared with enrollment and schedules.
 - [[Authentication and Roles]]
 - [[Development Setup]]
 - [[Users and Accounts]]
+- [[Frontend Design System]]

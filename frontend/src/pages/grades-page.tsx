@@ -99,7 +99,7 @@ export function GradesPage() {
   ].filter(Boolean) as { v: string; l: string }[]
   const [scope, setScope] = useState(scopes[0]?.v ?? "MY")
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-7">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
         <h1 className="text-2xl font-semibold">Grades</h1>

@@ -40,14 +40,14 @@ function StudentProfileForm({ profile }: { profile: StudentProfile }) {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }))
   return (
-    <div className="mx-auto max-w-[1000px] p-5 md:p-8">
+    <div className="mx-auto max-w-[1000px] p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-semibold text-[#092f66]">
+          <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">
             <UserRound />
             Profile & Security
           </h1>
-          <p className="mt-2 text-slate-600">
+          <p className="mt-2 text-muted-foreground">
             Official identity fields are read-only. You may maintain contact
             information.
           </p>
@@ -71,7 +71,7 @@ function StudentProfileForm({ profile }: { profile: StudentProfile }) {
             ["Academic status", profile.academicStatus],
           ].map(([k, v]) => (
             <div key={String(k)}>
-              <dt className="text-xs text-slate-500">{k}</dt>
+              <dt className="text-xs text-muted-foreground">{k}</dt>
               <dd className="mt-1 font-medium">{v}</dd>
             </div>
           ))}

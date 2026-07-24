@@ -127,10 +127,10 @@ function initials(name: string) {
 }
 function typeTone(type: AdminUser["accountType"]) {
   return type === "STUDENT"
-    ? "bg-violet-50 text-violet-700"
+    ? "bg-info text-info-foreground"
     : type === "FACULTY"
-      ? "bg-sky-50 text-sky-700"
-      : "bg-slate-100 text-slate-700"
+      ? "bg-info text-info-foreground"
+      : "bg-muted text-foreground"
 }
 function identityLabel(user: AdminUser) {
   if (user.accountType === "FACULTY")
@@ -256,47 +256,46 @@ export function UsersAccountsPage() {
       value: summary.data?.active ?? 0,
       detail: `of ${summary.data?.total ?? 0} total`,
       icon: UserCheck,
-      tone: "text-emerald-700 bg-emerald-50",
+      tone: "text-success-foreground bg-success",
     },
     {
       label: "Inactive",
       value: summary.data?.inactive ?? 0,
       detail: "cannot sign in",
       icon: UserX,
-      tone: "text-slate-700 bg-slate-100",
+      tone: "text-foreground bg-muted",
     },
     {
       label: "Locked",
       value: summary.data?.locked ?? 0,
       detail: "security holds",
       icon: LockKeyhole,
-      tone: "text-red-700 bg-red-50",
+      tone: "text-destructive bg-destructive/10",
     },
     {
       label: "Must change",
       value: summary.data?.forcedChange ?? 0,
       detail: "temporary passwords",
       icon: KeyRound,
-      tone: "text-amber-700 bg-amber-50",
+      tone: "text-warning-foreground bg-warning",
     },
   ]
   return (
-    <div className="mx-auto min-w-0 max-w-[1560px] p-4 sm:p-6 lg:p-8">
+    <div className="app-page min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-[.16em] text-[#0969da] uppercase">
+          <p className="text-xs font-semibold tracking-[.16em] text-primary uppercase">
             Administration
           </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[#0b1f3a]">
+          <h1 className="app-page-title mt-1">
             Users & Accounts
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600">
+          <p className="app-page-description max-w-2xl">
             Manage account identity, access, credentials, and active sessions
             from one directory.
           </p>
         </div>
         <Button
-          className="bg-[#0969da] hover:bg-[#075dbf]"
           onClick={() => setEditor("create")}
         >
           <UserPlus />
@@ -307,7 +306,7 @@ export function UsersAccountsPage() {
         {metrics.map((metric) => (
           <section
             key={metric.label}
-            className="flex min-w-0 items-center gap-4 border bg-white p-4 shadow-sm"
+            className="flex min-w-0 items-center gap-4 border bg-background p-4 shadow-sm"
           >
             <div
               className={`grid size-10 place-items-center rounded-md ${metric.tone}`}
@@ -320,7 +319,7 @@ export function UsersAccountsPage() {
               </p>
               <p className="text-sm font-medium">
                 {metric.label}{" "}
-                <span className="font-normal text-slate-500">
+                <span className="font-normal text-muted-foreground">
                   · {metric.detail}
                 </span>
               </p>
@@ -329,12 +328,12 @@ export function UsersAccountsPage() {
         ))}
       </div>
       <Tabs value={section} onValueChange={setSection} className="mt-7 min-w-0">
-        <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b bg-transparent p-0">
+        <TabsList>
           {workspaceTabs.map((tab) => (
             <TabsTrigger
               key={tab}
               value={tab}
-              className="rounded-none border-b-2 border-transparent px-4 py-3 capitalize data-[state=active]:border-[#0969da] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              className="capitalize"
             >
               {tab === "conflicts"
                 ? `Identity conflicts${conflicts.data?.length ? ` (${conflicts.data.length})` : ""}`
@@ -343,10 +342,10 @@ export function UsersAccountsPage() {
           ))}
         </TabsList>
         <TabsContent value="directory" className="mt-0">
-          <section className="border-x border-b bg-white">
+          <section className="border-x border-b bg-background">
             <div className="grid gap-3 border-b p-4 md:grid-cols-[minmax(240px,1fr)_180px_180px_180px]">
               <div className="relative">
-                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   className="pl-9"
                   placeholder="Search name, username, or email"
@@ -422,7 +421,7 @@ export function UsersAccountsPage() {
             <div className="max-w-full overflow-x-auto">
               <Table className="min-w-[1020px]">
                 <TableHeader>
-                  <TableRow className="bg-slate-50/70">
+                  <TableRow className="bg-surface">
                     <TableHead>Account</TableHead>
                     <TableHead>Type & domain link</TableHead>
                     <TableHead>Roles</TableHead>
@@ -438,7 +437,7 @@ export function UsersAccountsPage() {
                     <TableRow>
                       <TableCell
                         colSpan={6}
-                        className="h-40 text-center text-slate-500"
+                        className="h-40 text-center text-muted-foreground"
                       >
                         Loading account directory…
                       </TableCell>
@@ -447,7 +446,7 @@ export function UsersAccountsPage() {
                     <TableRow>
                       <TableCell
                         colSpan={6}
-                        className="h-40 text-center text-slate-500"
+                        className="h-40 text-center text-muted-foreground"
                       >
                         No accounts match these filters.
                       </TableCell>
@@ -461,7 +460,7 @@ export function UsersAccountsPage() {
                       >
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className="grid size-9 place-items-center rounded-full bg-[#eaf2fb] text-xs font-semibold text-[#0b3d78]">
+                            <div className="grid size-9 place-items-center rounded-full bg-info text-xs font-semibold text-info-foreground">
                               {initials(account.fullName)}
                             </div>
                             <div>
@@ -470,10 +469,10 @@ export function UsersAccountsPage() {
                                   {account.fullName}
                                 </p>
                                 {account.protectedAccount ? (
-                                  <ShieldCheck className="size-4 text-[#0969da]" />
+                                  <ShieldCheck className="size-4 text-primary" />
                                 ) : null}
                               </div>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-muted-foreground">
                                 {account.username} · {account.email}
                               </p>
                             </div>
@@ -486,11 +485,11 @@ export function UsersAccountsPage() {
                           >
                             {account.accountType}
                           </Badge>
-                          <p className="mt-1 max-w-[260px] truncate text-xs text-slate-500">
+                          <p className="mt-1 max-w-[260px] truncate text-xs text-muted-foreground">
                             {identityLabel(account)}
                           </p>
                           {account.identitySyncStatus !== "SYNCED" ? (
-                            <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700">
+                            <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-warning-foreground">
                               <AlertTriangle className="size-3" />
                               {account.identitySyncStatus.replaceAll("_", " ")}
                             </span>
@@ -517,7 +516,7 @@ export function UsersAccountsPage() {
                           <p className="text-sm">
                             {relative(account.lastLoginAt)}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             {account.activeSessionCount} active session
                             {account.activeSessionCount === 1 ? "" : "s"}
                           </p>
@@ -541,7 +540,7 @@ export function UsersAccountsPage() {
               </Table>
             </div>
             <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
-              <p className="text-slate-500">
+              <p className="text-muted-foreground">
                 {directory.data?.totalElements ?? 0} accounts
               </p>
               <div className="flex gap-2">
@@ -665,7 +664,7 @@ function FilterSelect({
 function SecurityState({ account }: { account: AdminUser }) {
   if (!account.active)
     return (
-      <Badge variant="outline" className="border-slate-300 text-slate-600">
+      <Badge variant="outline" className="text-muted-foreground">
         Inactive
       </Badge>
     )
@@ -673,7 +672,7 @@ function SecurityState({ account }: { account: AdminUser }) {
     return (
       <Badge
         variant="outline"
-        className="border-red-200 bg-red-50 text-red-700"
+        className="border-destructive/20 bg-destructive/10 text-destructive"
       >
         <LockKeyhole />
         Locked
@@ -684,17 +683,17 @@ function SecurityState({ account }: { account: AdminUser }) {
       <div>
         <Badge
           variant="outline"
-          className="border-amber-200 bg-amber-50 text-amber-800"
+          className="border-warning-foreground/20 bg-warning text-warning-foreground"
         >
           <Clock3 />
           Must change
         </Badge>
         {account.temporaryPasswordExpiresAt ? (
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Expires {date(account.temporaryPasswordExpiresAt)}
           </p>
         ) : (
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Grandfathered credential
           </p>
         )}
@@ -703,7 +702,7 @@ function SecurityState({ account }: { account: AdminUser }) {
   return (
     <Badge
       variant="outline"
-      className="border-emerald-200 bg-emerald-50 text-emerald-700"
+      className="border-success-foreground/20 bg-success text-success-foreground"
     >
       <Check />
       Secure
@@ -767,7 +766,7 @@ function AccountMenu({
         <DropdownMenuItem
           disabled={!canMutate || account.activeSessionCount === 0}
           onSelect={() => onAction("revoke-all")}
-          className="text-red-700"
+          className="text-destructive"
         >
           <ShieldAlert />
           Revoke all sessions
@@ -871,7 +870,7 @@ function AccountEditor({
               disabled={linked}
             />
             {linked ? (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Read-only; synchronized from Faculty.
               </p>
             ) : null}
@@ -886,7 +885,7 @@ function AccountEditor({
               disabled={linked}
             />
             {linked ? (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Read-only; synchronized from Faculty.
               </p>
             ) : null}
@@ -907,7 +906,7 @@ function AccountEditor({
                   />
                   <span>{role.name.replaceAll("_", " ")}</span>
                   {role.protectedRole ? (
-                    <ShieldCheck className="ml-auto size-4 text-[#0969da]" />
+                    <ShieldCheck className="ml-auto size-4 text-primary" />
                   ) : null}
                 </label>
               ))}
@@ -929,7 +928,7 @@ function AccountEditor({
             Cancel
           </Button>
           <Button
-            className="bg-[#0969da]"
+            className="bg-primary"
             disabled={
               !username ||
               !effectiveEmail ||
@@ -978,7 +977,7 @@ function CredentialDialog({
         className="sm:max-w-lg"
       >
         <DialogHeader>
-          <div className="mb-2 grid size-11 place-items-center rounded-md bg-amber-50 text-amber-700">
+          <div className="mb-2 grid size-11 place-items-center rounded-md bg-warning text-warning-foreground">
             <KeyRound />
           </div>
           <DialogTitle>Copy this temporary credential now</DialogTitle>
@@ -989,15 +988,15 @@ function CredentialDialog({
         </DialogHeader>
         {credential ? (
           <div className="space-y-4">
-            <div className="border bg-slate-50 p-4">
-              <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <div className="border bg-surface p-4">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Username
               </p>
               <p className="mt-1 font-mono text-sm">
                 {credential.account.username}
               </p>
               <Separator className="my-3" />
-              <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Temporary password
               </p>
               <div className="mt-1 flex items-center justify-between gap-3">
@@ -1016,7 +1015,7 @@ function CredentialDialog({
                   <Clipboard />
                 </Button>
               </div>
-              <p className="mt-3 text-xs text-slate-500">
+              <p className="mt-3 text-xs text-muted-foreground">
                 Expires {date(credential.expiresAt)}
               </p>
             </div>
@@ -1155,14 +1154,14 @@ function AccountDetail({
       <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
         <SheetHeader>
           <div className="flex items-start gap-3 pr-8">
-            <div className="grid size-11 place-items-center rounded-full bg-[#eaf2fb] font-semibold text-[#0b3d78]">
+            <div className="grid size-11 place-items-center rounded-full bg-info font-semibold text-info-foreground">
               {initials(account.fullName)}
             </div>
             <div>
               <SheetTitle className="flex items-center gap-2">
                 {account.fullName}
                 {account.protectedAccount ? (
-                  <ShieldCheck className="size-4 text-[#0969da]" />
+                  <ShieldCheck className="size-4 text-primary" />
                 ) : null}
               </SheetTitle>
               <SheetDescription>
@@ -1172,7 +1171,7 @@ function AccountDetail({
           </div>
         </SheetHeader>
         {readOnly ? (
-          <div className="mt-5 flex gap-3 border-l-4 border-blue-500 bg-blue-50 p-3 text-sm text-blue-950">
+          <div className="mt-5 flex gap-3 border-l-4 border-info-foreground/30 bg-info p-3 text-sm text-info-foreground">
             <ShieldCheck className="mt-0.5 size-4 shrink-0" />
             <span>
               {account.accountType === "STUDENT"
@@ -1182,7 +1181,7 @@ function AccountDetail({
           </div>
         ) : null}
         <Tabs defaultValue="identity" className="mt-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList>
             <TabsTrigger value="identity">Identity</TabsTrigger>
             <TabsTrigger value="access">Access</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
@@ -1206,7 +1205,7 @@ function AccountDetail({
           </TabsContent>
           <TabsContent value="access" className="space-y-5 pt-4">
             <div>
-              <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Roles
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -1251,7 +1250,7 @@ function AccountDetail({
           </TabsContent>
           <TabsContent value="sessions" className="pt-4">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 {sessions.filter((item) => !item.revokedAt).length} active
                 sessions
               </p>
@@ -1269,13 +1268,13 @@ function AccountDetail({
             </div>
             <div className="divide-y border">
               {sessions.length === 0 ? (
-                <p className="p-6 text-center text-sm text-slate-500">
+                <p className="p-6 text-center text-sm text-muted-foreground">
                   No session history.
                 </p>
               ) : (
                 sessions.map((session) => (
                   <div key={session.id} className="flex items-start gap-3 p-4">
-                    <Laptop className="mt-1 size-5 text-slate-500" />
+                    <Laptop className="mt-1 size-5 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium">
@@ -1286,10 +1285,10 @@ function AccountDetail({
                           <Badge variant="outline">Revoked</Badge>
                         ) : null}
                       </div>
-                      <p className="mt-1 truncate text-xs text-slate-500">
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
                         {session.userAgent ?? "Unknown device"}
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Last used {date(session.lastUsedAt)} ·{" "}
                         {session.lastIp ?? "IP unavailable"}
                       </p>
@@ -1298,7 +1297,7 @@ function AccountDetail({
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-red-700"
+                        className="text-destructive"
                         disabled={account.protectedAccount && !superAdmin}
                         onClick={() => onAction("revoke-session", session)}
                       >
@@ -1313,7 +1312,7 @@ function AccountDetail({
           <TabsContent value="activity" className="pt-4">
             <div className="divide-y border">
               {activity.length === 0 ? (
-                <p className="p-6 text-center text-sm text-slate-500">
+                <p className="p-6 text-center text-sm text-muted-foreground">
                   No recorded security activity.
                 </p>
               ) : (
@@ -1322,7 +1321,7 @@ function AccountDetail({
                     <p className="text-sm font-medium">
                       {item.action.replaceAll("_", " ")}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {date(item.createdAt)}
                       {item.ipAddress ? ` · ${item.ipAddress}` : ""}
                     </p>
@@ -1339,7 +1338,7 @@ function AccountDetail({
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
         {label}
       </p>
       <p className="mt-1 text-sm font-medium">{value}</p>
@@ -1372,16 +1371,16 @@ function RolesWorkspace({
     )
   }
   return (
-    <section className="grid min-h-[520px] border bg-white lg:grid-cols-[280px_1fr]">
+    <section className="grid min-h-[520px] border bg-background lg:grid-cols-[280px_1fr]">
       <aside className="border-b p-3 lg:border-r lg:border-b-0">
-        <p className="px-2 pb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+        <p className="px-2 pb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Migration-managed roles
         </p>
         {roles.map((role) => (
           <button
             key={role.id}
             onClick={() => selectRole(role)}
-            className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm ${selected?.id === role.id ? "bg-blue-50 font-medium text-[#075dbf]" : "hover:bg-slate-50"}`}
+            className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm ${selected?.id === role.id ? "bg-info font-medium text-primary" : "hover:bg-surface"}`}
           >
             <span>{role.name.replaceAll("_", " ")}</span>
             {role.protectedRole ? <ShieldCheck className="size-4" /> : null}
@@ -1396,12 +1395,12 @@ function RolesWorkspace({
                 <h2 className="text-xl font-semibold">
                   {selected.name.replaceAll("_", " ")}
                 </h2>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {selected.description}
                 </p>
               </div>
               {selected.protectedRole ? (
-                <Badge className="bg-blue-50 text-blue-700">
+                <Badge className="bg-info text-info-foreground">
                   <ShieldCheck />
                   System managed
                 </Badge>
@@ -1415,7 +1414,7 @@ function RolesWorkspace({
                 return (
                   <label
                     key={permission.id}
-                    className={`flex items-start gap-3 border p-3 text-sm ${locked ? "bg-slate-50 text-slate-500" : ""}`}
+                    className={`flex items-start gap-3 border p-3 text-sm ${locked ? "bg-surface text-muted-foreground" : ""}`}
                   >
                     <Checkbox
                       checked={ids.includes(permission.id)}
@@ -1426,7 +1425,7 @@ function RolesWorkspace({
                     />
                     <span>
                       <span className="font-medium">{permission.name}</span>
-                      <span className="mt-1 block text-xs leading-5 text-slate-500">
+                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
                         {permission.description}
                       </span>
                     </span>
@@ -1501,17 +1500,17 @@ function ConflictsWorkspace({ conflicts }: { conflicts: IdentityConflict[] }) {
     }
   }
   return (
-    <section className="border bg-white">
+    <section className="border bg-background">
       <div className="border-b p-5">
         <h2 className="text-lg font-semibold">Preserved identity mismatches</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           Review legacy account values against authoritative faculty and student
           records.
         </p>
       </div>
       {conflicts.length === 0 ? (
         <div className="grid place-items-center p-14 text-center">
-          <ShieldCheck className="size-9 text-emerald-600" />
+          <ShieldCheck className="size-9 text-success-foreground" />
           <p className="mt-3 font-medium">
             All linked identities are synchronized
           </p>
@@ -1537,13 +1536,13 @@ function ConflictsWorkspace({ conflicts }: { conflicts: IdentityConflict[] }) {
                   </TableCell>
                   <TableCell>
                     <p>{conflict.accountName}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {conflict.accountEmail}
                     </p>
                   </TableCell>
                   <TableCell>
                     <p>{conflict.authoritativeName}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {conflict.authoritativeEmail}
                     </p>
                   </TableCell>
@@ -1551,14 +1550,14 @@ function ConflictsWorkspace({ conflicts }: { conflicts: IdentityConflict[] }) {
                     <Badge
                       className={
                         conflict.status === "EMAIL_CONFLICT"
-                          ? "bg-red-50 text-red-700"
-                          : "bg-amber-50 text-amber-800"
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-warning text-warning-foreground"
                       }
                     >
                       {conflict.status.replaceAll("_", " ")}
                     </Badge>
                     {conflict.conflictingUserId ? (
-                      <p className="mt-1 text-xs text-red-700">
+                      <p className="mt-1 text-xs text-destructive">
                         Resolve account {conflict.conflictingUserId.slice(0, 8)}{" "}
                         first
                       </p>

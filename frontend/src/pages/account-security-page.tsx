@@ -75,21 +75,21 @@ export default function AccountSecurityPage() {
     }
   }
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f4f7fb] text-slate-950">
-      <header className="border-b bg-[#092f66] text-white">
+    <main className="min-h-screen overflow-x-hidden bg-surface text-foreground">
+      <header className="border-b bg-primary text-white">
         <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-3 px-4 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-md border border-white/25 bg-white/10">
+            <div className="grid size-10 place-items-center rounded-md border border-white/25 bg-background/10">
               <GraduationCap />
             </div>
             <div className="min-w-0">
               <p className="font-semibold">College CIS</p>
-              <p className="text-xs text-blue-100">Account Security</p>
+              <p className="text-xs text-info">Account Security</p>
             </div>
           </div>
           <Button
             variant="ghost"
-            className="shrink-0 px-2 text-white hover:bg-white/10 hover:text-white sm:px-4"
+            className="shrink-0 px-2 text-white hover:bg-background/10 hover:text-white sm:px-4"
             onClick={() => void logout()}
           >
             <LogOut />
@@ -100,7 +100,7 @@ export default function AccountSecurityPage() {
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-5 md:py-12">
         <Button
           variant="ghost"
-          className="mb-5 -ml-3 text-slate-600"
+          className="mb-5 -ml-3 text-muted-foreground"
           onClick={() => navigate(portalHome())}
           disabled={user?.passwordChangeRequired}
         >
@@ -109,16 +109,16 @@ export default function AccountSecurityPage() {
         </Button>
         <div className="mb-8">
           <div className="flex items-center gap-3">
-            <ShieldCheck className="size-8 text-[#0969da]" />
+            <ShieldCheck className="size-8 text-primary" />
             <h1 className="min-w-0 text-2xl font-semibold tracking-tight sm:text-3xl">
               Account Security
             </h1>
           </div>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             Manage your password and the devices signed in to {user?.email}.
           </p>
           {user?.passwordChangeRequired ? (
-            <div className="mt-5 flex max-w-2xl items-start gap-3 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <div className="mt-5 flex max-w-2xl items-start gap-3 border-l-4 border-warning-foreground/30 bg-warning px-4 py-3 text-sm text-warning-foreground">
               <Clock3 className="mt-0.5 size-4 shrink-0" />
               <span>
                 Your temporary password must be replaced before you can open the
@@ -128,14 +128,14 @@ export default function AccountSecurityPage() {
           ) : null}
         </div>
         <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]">
-          <section className="min-w-0 border bg-white p-4 shadow-sm sm:p-6">
+          <section className="min-w-0 border bg-background p-4 shadow-sm sm:p-6">
             <div className="flex items-start gap-3">
-              <div className="grid size-10 place-items-center rounded-md bg-blue-50 text-[#0969da]">
+              <div className="grid size-10 place-items-center rounded-md bg-info text-primary">
                 <KeyRound className="size-5" />
               </div>
               <div className="min-w-0">
                 <h2 className="text-lg font-semibold">Change password</h2>
-                <p className="mt-1 break-words text-sm text-slate-600">
+                <p className="mt-1 break-words text-sm text-muted-foreground">
                   All other sessions will be revoked immediately.
                 </p>
               </div>
@@ -160,7 +160,7 @@ export default function AccountSecurityPage() {
                   value={next}
                   onChange={(e) => setNext(e.target.value)}
                 />
-                <p className="break-words text-xs leading-5 text-slate-500">
+                <p className="break-words text-xs leading-5 text-muted-foreground">
                   12–128 characters with at least one letter and one number.
                 </p>
               </div>
@@ -175,7 +175,7 @@ export default function AccountSecurityPage() {
                 />
               </div>
               <Button
-                className="w-full bg-[#0969da] hover:bg-[#075dbf]"
+                className="w-full bg-primary hover:bg-primary/90"
                 disabled={busy || !current || next.length < 12 || !confirm}
               >
                 <ShieldCheck />
@@ -183,14 +183,14 @@ export default function AccountSecurityPage() {
               </Button>
             </form>
           </section>
-          <section className="min-w-0 border bg-white shadow-sm">
+          <section className="min-w-0 border bg-background shadow-sm">
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 p-4 sm:p-6">
               <div className="min-w-0">
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <MonitorSmartphone className="size-5 text-[#0969da]" />
+                  <MonitorSmartphone className="size-5 text-primary" />
                   Active sessions
                 </h2>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {active.length} signed-in{" "}
                   {active.length === 1 ? "device" : "devices"}
                 </p>
@@ -217,10 +217,10 @@ export default function AccountSecurityPage() {
             <Separator />
             <div className="divide-y">
               {sessions.isLoading ? (
-                <p className="p-6 text-sm text-slate-500">Loading sessions…</p>
+                <p className="p-6 text-sm text-muted-foreground">Loading sessions…</p>
               ) : active.length === 0 ? (
                 <div className="grid place-items-center p-10 text-center">
-                  <CheckCircle2 className="size-8 text-emerald-600" />
+                  <CheckCircle2 className="size-8 text-success-foreground" />
                   <p className="mt-3 font-medium">No other active sessions</p>
                 </div>
               ) : (
@@ -231,7 +231,7 @@ export default function AccountSecurityPage() {
                       key={session.id}
                       className="flex min-w-0 items-start gap-3 p-4 sm:gap-4 sm:p-5"
                     >
-                      <div className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-100">
+                      <div className="grid size-10 shrink-0 place-items-center rounded-full bg-muted">
                         <Icon className="size-5" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -240,15 +240,15 @@ export default function AccountSecurityPage() {
                             {deviceName(session.userAgent)}
                           </p>
                           {session.current ? (
-                            <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                            <Badge className="bg-success text-success-foreground hover:bg-success">
                               Current session
                             </Badge>
                           ) : null}
                         </div>
-                        <p className="mt-1 truncate text-xs text-slate-500">
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
                           {session.userAgent ?? "User agent unavailable"}
                         </p>
-                        <p className="mt-2 break-words text-xs text-slate-600">
+                        <p className="mt-2 break-words text-xs text-muted-foreground">
                           Last used {when(session.lastUsedAt)} · IP{" "}
                           {session.lastIp ?? "unavailable"}
                         </p>
@@ -257,7 +257,7 @@ export default function AccountSecurityPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="shrink-0 px-2 text-red-700 sm:px-3"
+                          className="shrink-0 px-2 text-destructive sm:px-3"
                           disabled={revoke.isPending}
                           onClick={() =>
                             void revoke

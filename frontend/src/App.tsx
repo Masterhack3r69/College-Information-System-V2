@@ -38,6 +38,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -130,36 +131,41 @@ const UsersAccountsPage = lazy(() =>
 )
 
 const nav = [
-  { to: "/admin", label: "Overview", icon: Home },
+  { to: "/admin", label: "Overview", icon: Home, section: "Workspace" },
   {
     to: "/admin/students",
     label: "Students",
     icon: Users,
     permission: "STUDENT_VIEW",
+    section: "Student lifecycle",
   },
   {
     to: "/admin/enrollment",
     label: "Enrollment",
     icon: ClipboardList,
     permission: "ENROLLMENT_VIEW",
+    section: "Student lifecycle",
   },
   {
     to: "/admin/academic-evaluations",
     label: "Academic Reviews",
     icon: BookCopy,
     permission: "ACADEMIC_EVALUATION_VIEW",
+    section: "Student lifecycle",
   },
   {
     to: "/admin/schedules",
     label: "Schedules",
     icon: CalendarDays,
     permission: "SCHEDULE_VIEW",
+    section: "Academic operations",
   },
   {
     to: "/admin/finance",
     label: "Finance",
     icon: WalletCards,
     permission: "FINANCE_VIEW",
+    section: "Operations",
   },
   {
     to: "/admin/grades",
@@ -171,37 +177,51 @@ const nav = [
       "GRADE_LOCK",
       "GRADE_APPROVE",
     ],
+    section: "Academic operations",
   },
   {
     to: "/admin/reports",
     label: "Reports",
     icon: FileText,
     permission: "REPORT_GENERATE",
+    section: "Operations",
   },
   {
     to: "/admin/setup",
     label: "Academic Setup",
     icon: Settings,
     permission: "ACADEMIC_SETUP_VIEW",
+    section: "Administration",
   },
   {
     to: "/admin/administration/users",
     label: "Users & Accounts",
     icon: UserRoundCog,
     permission: "ACCOUNT_MANAGE",
+    section: "Administration",
   },
   {
     to: "/admin/grade-corrections",
     label: "Grade Corrections",
     icon: BookOpenCheck,
     anyPermissions: ["GRADE_REVIEW", "GRADE_LOCK"],
+    section: "Academic operations",
   },
   {
     to: "/admin/student-portal",
     label: "Student Portal",
     icon: GraduationCap,
     permission: "STUDENT_PORTAL_ADMIN",
+    section: "Administration",
   },
+]
+
+const navSections = [
+  "Workspace",
+  "Student lifecycle",
+  "Academic operations",
+  "Operations",
+  "Administration",
 ]
 
 function Guard({
@@ -243,19 +263,24 @@ function Forbidden() {
 function AppShell() {
   const { user, logout, can } = useAuth()
   const location = useLocation()
+  const visibleNav = nav.filter(
+    (item) =>
+      (!item.permission || can(item.permission)) &&
+      (!item.anyPermissions || item.anyPermissions.some(can))
+  )
   return (
     <AcademicTermProvider>
       <SidebarProvider
-        style={{ "--sidebar-width": "13.75rem" } as React.CSSProperties}
+        style={{ "--sidebar-width": "15rem" } as React.CSSProperties}
       >
-        <Sidebar collapsible="icon" className="border-r bg-slate-50/80">
-          <SidebarHeader className="h-[76px] justify-center border-b px-4">
+        <Sidebar collapsible="icon" className="border-r bg-sidebar">
+          <SidebarHeader className="h-18 justify-center border-b px-4">
             <div className="flex items-center gap-3">
-              <div className="grid size-9 place-items-center rounded-md bg-[#0d2b4d] text-white">
+              <div className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground shadow-xs">
                 <GraduationCap className="size-5" />
               </div>
               <div className="group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-semibold text-[#0b1f3a]">
+                <p className="text-sm font-semibold text-foreground">
                   College SIS
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -265,15 +290,15 @@ function AppShell() {
             </div>
           </SidebarHeader>
           <SidebarContent>
-            <SidebarGroup className="pt-5">
-              <SidebarMenu>
-                {nav
-                  .filter(
-                    (x) =>
-                      (!x.permission || can(x.permission)) &&
-                      (!x.anyPermissions || x.anyPermissions.some(can))
-                  )
-                  .map((item) => (
+            {navSections.map((section) => {
+              const sectionItems = visibleNav.filter(
+                (item) => item.section === section
+              )
+              return sectionItems.length ? (
+                <SidebarGroup key={section} className="py-2">
+                  <SidebarGroupLabel>{section}</SidebarGroupLabel>
+                  <SidebarMenu>
+                    {sectionItems.map((item) => (
                     <SidebarMenuItem key={item.to}>
                       <SidebarMenuButton
                         asChild
@@ -290,9 +315,11 @@ function AppShell() {
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                  ))}
-              </SidebarMenu>
-            </SidebarGroup>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroup>
+              ) : null
+            })}
           </SidebarContent>
           <SidebarFooter className="border-t p-3">
             <SidebarMenu>
@@ -317,7 +344,7 @@ function AppShell() {
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>
-          <header className="flex h-[76px] items-center justify-between border-b bg-white px-4 md:px-7">
+          <header className="sticky top-0 z-20 flex h-18 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm md:px-8">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <SidebarTrigger />
               <AcademicTermSelector />
@@ -340,7 +367,7 @@ function AppShell() {
               </div>
             </div>
           </header>
-          <main className="min-h-[calc(100vh-76px)] bg-white">
+          <main className="min-h-[calc(100vh-4.5rem)] bg-background">
             <Outlet />
           </main>
         </SidebarInset>

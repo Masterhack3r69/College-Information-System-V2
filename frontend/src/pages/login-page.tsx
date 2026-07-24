@@ -56,16 +56,16 @@ export function LoginPage() {
   const minutes = Math.floor(retryAfter / 60),
     seconds = retryAfter % 60
   return (
-    <main className="grid min-h-screen bg-slate-50 lg:grid-cols-[1.05fr_.95fr]">
-      <section className="hidden items-center justify-center bg-[#0b2748] p-16 text-white lg:flex">
+    <main className="grid min-h-screen bg-surface lg:grid-cols-[1.05fr_.95fr]">
+      <section className="hidden items-center justify-center bg-primary p-16 text-white lg:flex">
         <div className="max-w-lg">
-          <div className="mb-8 grid size-14 place-items-center rounded-xl border border-white/20 bg-white/10">
+          <div className="mb-8 grid size-14 place-items-center rounded-lg border border-white/20 bg-background/10">
             <GraduationCap className="size-8" />
           </div>
           <h1 className="text-4xl font-semibold tracking-tight">
             Student information, handled with clarity.
           </h1>
-          <p className="mt-5 text-lg leading-8 text-slate-300">
+          <p className="mt-5 text-lg leading-8 text-muted-foreground/60">
             A focused workspace for registrar enrollment, academic records, and
             official documents.
           </p>
@@ -74,9 +74,9 @@ export function LoginPage() {
       <section className="grid place-items-center p-6">
         <form onSubmit={submit} className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
-            <GraduationCap className="size-9 text-[#0b2748]" />
+            <GraduationCap className="size-9 text-primary" />
           </div>
-          <h2 className="text-3xl font-semibold tracking-tight text-[#0b1f3a]">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">
             Welcome back
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -111,13 +111,13 @@ export function LoginPage() {
               </p>
             ) : null}
             {retryAfter > 0 ? (
-              <div className="flex items-center gap-2 border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              <div className="flex items-center gap-2 border-l-4 border-warning-foreground/30 bg-warning px-3 py-2 text-sm text-warning-foreground">
                 <Clock3 className="size-4" />
                 Try again in {minutes}:{seconds.toString().padStart(2, "0")}
               </div>
             ) : null}
             <Button
-              className="w-full bg-[#0969da] hover:bg-[#075dbf]"
+              className="w-full bg-primary hover:bg-primary/90"
               disabled={loading || retryAfter > 0}
             >
               {loading ? <Loader2 className="animate-spin" /> : null}

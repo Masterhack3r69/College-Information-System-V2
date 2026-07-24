@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
@@ -87,27 +88,24 @@ export function FacultyShell() {
     .join("")
   return (
     <SidebarProvider
-      style={{ "--sidebar-width": "17.25rem" } as React.CSSProperties}
+      style={{ "--sidebar-width": "15rem" } as React.CSSProperties}
     >
-      <Sidebar
-        collapsible="icon"
-        className="border-r border-[#d6e0eb] bg-[#f6f9fc]"
-      >
-        <SidebarHeader className="h-[104px] justify-center border-b border-[#d6e0eb] px-5">
+      <Sidebar collapsible="icon" className="border-r bg-sidebar">
+        <SidebarHeader className="h-18 justify-center border-b px-4">
           <div className="flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-md border-2 border-[#0c3872] text-[#0c3872]">
-              <GraduationCap />
+            <div className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground shadow-xs">
+              <GraduationCap className="size-5" />
             </div>
             <div className="group-data-[collapsible=icon]:hidden">
-              <p className="font-serif text-xl font-semibold text-[#092f66]">
+              <p className="text-sm font-semibold text-foreground">
                 College CIS
               </p>
-              <p className="text-sm text-slate-600">Faculty Portal</p>
+              <p className="text-xs text-muted-foreground">Faculty portal</p>
             </div>
           </div>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup className="px-2 pt-4">
+          <SidebarGroup className="py-3">
             <SidebarMenu>
               {items
                 .filter(
@@ -121,7 +119,7 @@ export function FacultyShell() {
                       asChild
                       tooltip={x.label}
                       isActive={location.pathname.startsWith(x.to)}
-                      className="h-12 rounded-md text-[15px] text-slate-700 data-[active=true]:bg-[#073b7a] data-[active=true]:text-white"
+                      className="text-sm"
                     >
                       <Link to={x.to}>
                         <x.icon />
@@ -133,14 +131,13 @@ export function FacultyShell() {
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="border-t border-[#d6e0eb] p-2">
+        <SidebarFooter className="border-t p-3">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 tooltip="Faculty Profile"
                 isActive={location.pathname.startsWith("/faculty/profile")}
-                className="h-11"
               >
                 <Link to="/faculty/profile">
                   <UserRound />
@@ -152,7 +149,6 @@ export function FacultyShell() {
               <SidebarMenuButton
                 asChild
                 tooltip="Account Security"
-                className="h-11"
               >
                 <Link to="/account/security">
                   <KeyRound />
@@ -164,7 +160,6 @@ export function FacultyShell() {
               <SidebarMenuButton
                 onClick={() => void logout()}
                 tooltip="Sign out"
-                className="h-11"
               >
                 <LogOut />
                 <span>Sign out</span>
@@ -174,11 +169,11 @@ export function FacultyShell() {
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
-      <SidebarInset className="bg-white">
-        <header className="flex h-[72px] items-center justify-between border-b border-[#d6e0eb] px-4 md:px-8">
+      <SidebarInset className="bg-background">
+        <header className="sticky top-0 z-20 flex h-18 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm md:px-8">
           <div className="flex items-center gap-3">
             <SidebarTrigger />
-            <CalendarDays className="text-[#0c3872]" />
+            <CalendarDays className="size-4 text-primary" />
             <span className="hidden text-sm font-medium sm:inline">
               First Semester · AY 2026–2027
             </span>
@@ -186,10 +181,12 @@ export function FacultyShell() {
           <div className="flex items-center gap-4">
             {(user?.availablePortals.length ?? 0) > 1 ? (
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm">
-                  <UsersRound />
-                  Faculty Portal
-                  <ChevronDown />
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="hidden sm:flex">
+                    <UsersRound />
+                    Faculty portal
+                    <ChevronDown />
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuGroup>
@@ -206,8 +203,8 @@ export function FacultyShell() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
-            <Avatar className="size-10">
-              <AvatarFallback className="bg-[#073b7a] text-white">
+            <Avatar className="size-9">
+              <AvatarFallback className="bg-primary text-primary-foreground">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -216,7 +213,7 @@ export function FacultyShell() {
             </span>
           </div>
         </header>
-        <main className="min-h-[calc(100vh-72px)]">
+        <main className="min-h-[calc(100vh-4.5rem)]">
           <Outlet />
         </main>
       </SidebarInset>

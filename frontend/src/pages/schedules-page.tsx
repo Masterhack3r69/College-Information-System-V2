@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertTriangle, Archive, CalendarDays, CheckCircle2, Copy, History, Loader2, Pencil, Plus, Search, ShieldAlert, Trash2, Users, X } from "lucide-react"
+import { AlertTriangle, Archive, CheckCircle2, Copy, History, Loader2, Pencil, Plus, Search, ShieldAlert, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { api, ApiError } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
@@ -152,9 +152,9 @@ export function SchedulesPage() {
   const openLifecycle = (action: LifecycleAction, item: Schedule) => { setLifecycle({ action, schedule: item }); setReason(""); setAcknowledgeLoad(false); setVisibleError(null); if (action === "revise") setForm(toRequest(item)) }
   const updateMeeting = (index: number, values: Partial<Meeting>) => setForm(current => ({ ...current, meetings: current.meetings.map((item, itemIndex) => itemIndex === index ? { ...item, ...values } : item) }))
 
-  return <main className="mx-auto flex max-w-[1540px] flex-col gap-5 p-4 md:p-6 lg:p-7">
+  return <main className="app-page flex flex-col gap-5">
     <header className="flex flex-wrap items-end justify-between gap-4">
-      <div><h1 className="text-2xl font-semibold tracking-tight text-[#0b1f3a]">Scheduling workspace</h1><p className="mt-1 text-sm text-muted-foreground">Plan drafts, publish controlled revisions, and inspect resource use by term.</p></div>
+      <div><h1 className="app-page-title">Scheduling workspace</h1><p className="app-page-description">Plan drafts, publish controlled revisions, and inspect resource use by term.</p></div>
       <div className="flex flex-wrap gap-2">
         {can("SCHEDULE_MANAGE") && <Button variant="outline" onClick={() => { setCopyOpen(true); setVisibleError(null) }}><Copy data-icon="inline-start"/>Copy term</Button>}
         {can("SCHEDULE_MANAGE") && <Button onClick={openCreate}><Plus data-icon="inline-start"/>New draft</Button>}
@@ -166,12 +166,12 @@ export function SchedulesPage() {
     <TermAndSearchFilters search={search} setSearch={setSearch} schoolYearId={schoolYearId} semesterId={semesterId} academicTerm={academicTerm} programId={programId} setProgramId={setProgramId} programs={programs.data?.items ?? []}/>
 
     <Tabs value={tab} onValueChange={setTab}>
-      <TabsList variant="line" style={{ height: "auto" }} className="grid w-full grid-cols-2 gap-1 overflow-visible sm:flex sm:max-w-full sm:overflow-x-auto">
-        <TabsTrigger value="planner"><CalendarDays/>Planner</TabsTrigger>
+      <TabsList>
+        <TabsTrigger value="planner">Planner</TabsTrigger>
         <TabsTrigger value="section">Section timetable</TabsTrigger>
-        <TabsTrigger value="faculty"><Users/>Faculty load</TabsTrigger>
+        <TabsTrigger value="faculty">Faculty load</TabsTrigger>
         <TabsTrigger value="rooms">Room availability</TabsTrigger>
-        <TabsTrigger value="history"><History/>History</TabsTrigger>
+        <TabsTrigger value="history">History</TabsTrigger>
       </TabsList>
 
       <TabsContent value="planner" className="flex flex-col gap-4">
@@ -225,11 +225,11 @@ function TermAndSearchFilters({ search, setSearch, schoolYearId, semesterId, aca
 function ScheduleTable({ items, loading, canManage, canRevise, onDraftEdit, onLifecycle, onHistory }: { items:Schedule[]; loading:boolean; canManage:boolean; canRevise:boolean; onDraftEdit:(item:Schedule)=>void; onLifecycle:(action:LifecycleAction,item:Schedule)=>void; onHistory:(id:string)=>void }) {
   return <div className="overflow-hidden rounded-lg border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Offering</TableHead><TableHead>Faculty</TableHead><TableHead>Meetings</TableHead><TableHead>Capacity</TableHead><TableHead>Status</TableHead><TableHead>Latest change</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>
     {loading ? <TableRow><TableCell colSpan={7} className="h-32 text-center"><Loader2 className="mx-auto animate-spin"/></TableCell></TableRow> : items.length ? items.map(item => <TableRow key={item.id}>
-      <TableCell><p className="font-medium text-[#0b1f3a]">{item.courseCode} · {item.sectionCode}</p><p className="text-xs text-muted-foreground">{item.courseTitle}</p></TableCell>
+      <TableCell><p className="font-medium text-foreground">{item.courseCode} · {item.sectionCode}</p><p className="text-xs text-muted-foreground">{item.courseTitle}</p></TableCell>
       <TableCell>{item.facultyName}</TableCell>
       <TableCell><div className="flex min-w-52 flex-col gap-1 text-xs">{item.meetings.map(meeting => <span key={`${meeting.dayOfWeek}-${meeting.startTime}`}>{meeting.dayOfWeek.slice(0,3)} {meeting.startTime.slice(0,5)}–{meeting.endTime.slice(0,5)} · {meeting.deliveryMode === "ONLINE" ? "Online" : meeting.roomCode ?? "Room pending"} · {meeting.componentType}</span>)}</div></TableCell>
       <TableCell>{item.enrolledCount} / {item.capacity}</TableCell>
-      <TableCell><Badge variant={item.status === "ACTIVE" ? "default" : "secondary"}>{item.status}</Badge>{item.warnings?.map(warning => <p key={warning.code} className="mt-1 max-w-48 text-xs text-amber-700">{warning.message}</p>)}</TableCell>
+      <TableCell><Badge variant={item.status === "ACTIVE" ? "default" : "secondary"}>{item.status}</Badge>{item.warnings?.map(warning => <p key={warning.code} className="mt-1 max-w-48 text-xs text-warning-foreground">{warning.message}</p>)}</TableCell>
       <TableCell className="text-xs text-muted-foreground">{item.latestChange ? <><p>{item.latestChange.action}</p><p>{new Date(item.latestChange.changedAt).toLocaleString()}</p></> : "—"}</TableCell>
       <TableCell><div className="flex justify-end gap-1">
         <Button size="icon" variant="ghost" onClick={() => onHistory(item.id)} aria-label={`History for ${item.courseCode}`}><History/></Button>
@@ -262,13 +262,13 @@ function PolicyTable({ items, onChanged }: { items:ScheduleLoadPolicy[]; onChang
 }
 
 function RoomAvailabilityTable({ items, loading }: { items:RoomAvailability[]; loading:boolean }) {
-  return <div className="overflow-hidden rounded-lg border"><Table><TableHeader><TableRow><TableHead>Room</TableHead><TableHead>Profile</TableHead><TableHead>Occupied periods</TableHead></TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell colSpan={3} className="h-28 text-center"><Loader2 className="mx-auto animate-spin"/></TableCell></TableRow> : items.map(room => <TableRow key={room.roomId}><TableCell><p className="font-medium">{room.roomCode}</p><p className="text-xs text-muted-foreground">{room.roomName}</p></TableCell><TableCell>{room.building ?? "—"} · {room.roomType ?? "Unconfigured"} · {room.capacity ?? "—"} seats</TableCell><TableCell><div className="flex flex-wrap gap-1">{room.occupiedPeriods.length ? room.occupiedPeriods.map(period => <Badge key={`${period.scheduleId}-${period.startTime}`} variant="outline">{period.startTime.slice(0,5)}–{period.endTime.slice(0,5)} {period.courseCode}/{period.sectionCode}</Badge>) : <span className="text-sm text-emerald-700">Available all day</span>}</div></TableCell></TableRow>)}</TableBody></Table></div>
+  return <div className="overflow-hidden rounded-lg border"><Table><TableHeader><TableRow><TableHead>Room</TableHead><TableHead>Profile</TableHead><TableHead>Occupied periods</TableHead></TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell colSpan={3} className="h-28 text-center"><Loader2 className="mx-auto animate-spin"/></TableCell></TableRow> : items.map(room => <TableRow key={room.roomId}><TableCell><p className="font-medium">{room.roomCode}</p><p className="text-xs text-muted-foreground">{room.roomName}</p></TableCell><TableCell>{room.building ?? "—"} · {room.roomType ?? "Unconfigured"} · {room.capacity ?? "—"} seats</TableCell><TableCell><div className="flex flex-wrap gap-1">{room.occupiedPeriods.length ? room.occupiedPeriods.map(period => <Badge key={`${period.scheduleId}-${period.startTime}`} variant="outline">{period.startTime.slice(0,5)}–{period.endTime.slice(0,5)} {period.courseCode}/{period.sectionCode}</Badge>) : <span className="text-sm text-success-foreground">Available all day</span>}</div></TableCell></TableRow>)}</TableBody></Table></div>
 }
 
 function HistoryPanel({ items, loading }: { items:ScheduleHistory[]; loading:boolean }) {
   if (loading) return <div className="rounded-lg border p-8 text-center"><Loader2 className="mx-auto animate-spin"/></div>
   if (!items.length) return <div className="rounded-lg border p-8 text-center text-muted-foreground">Select an offering or no changes have been recorded yet.</div>
-  return <div className="flex flex-col gap-3">{items.map(item => <article key={item.id} className="grid gap-2 rounded-lg border p-4 md:grid-cols-[150px_1fr_220px]"><Badge className="w-fit" variant="outline">{item.action}</Badge><div><p className="font-medium">{item.reason || "No reason supplied"}</p>{item.acknowledgedWarnings.length > 0 && <p className="mt-1 text-xs text-amber-700">Acknowledged: {item.acknowledgedWarnings.join(", ")}</p>}</div><p className="text-xs text-muted-foreground md:text-right">{item.actorName || "System"}<br/>{new Date(item.changedAt).toLocaleString()}</p></article>)}</div>
+  return <div className="flex flex-col gap-3">{items.map(item => <article key={item.id} className="grid gap-2 rounded-lg border p-4 md:grid-cols-[150px_1fr_220px]"><Badge className="w-fit" variant="outline">{item.action}</Badge><div><p className="font-medium">{item.reason || "No reason supplied"}</p>{item.acknowledgedWarnings.length > 0 && <p className="mt-1 text-xs text-warning-foreground">Acknowledged: {item.acknowledgedWarnings.join(", ")}</p>}</div><p className="text-xs text-muted-foreground md:text-right">{item.actorName || "System"}<br/>{new Date(item.changedAt).toLocaleString()}</p></article>)}</div>
 }
 
 function ScheduleEditor({ open, onOpenChange, title: dialogTitle, description, form, setForm, section, sections, courses, faculty, rooms, conflicts, saving, onSave, updateMeeting }: { open:boolean; onOpenChange:(open:boolean)=>void; title:string; description:string; form:ScheduleRequest; setForm:React.Dispatch<React.SetStateAction<ScheduleRequest>>; section?:Section; sections:Section[]; courses:CurriculumDetailResponse["courses"]; faculty:Faculty[]; rooms:Room[]; conflicts:ScheduleConflictResponse|null; saving:boolean; onSave:()=>void; updateMeeting:(index:number,values:Partial<Meeting>)=>void }) {

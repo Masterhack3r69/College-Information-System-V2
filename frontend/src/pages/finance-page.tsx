@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { Calculator, Eye, Loader2, Plus, Printer, ReceiptText, RotateCcw, Search, Trash2, WalletCards } from "lucide-react"
+import { Calculator, Eye, Loader2, Plus, Printer, ReceiptText, RotateCcw, Search, Trash2 } from "lucide-react"
 import { openPdf, ApiError } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useAcademicTerm } from "@/lib/academic-term-context"
@@ -35,10 +35,10 @@ export function FinancePage() {
   const canPay = can("FINANCE_PAYMENT")
   const canManageFees = can("FEE_MANAGE")
   const canApprove = can("FINANCE_VOID_APPROVE") || can("FINANCE_ADJUSTMENT_APPROVE") || can("FINANCE_REFUND_APPROVE")
-  return <div className="flex flex-col gap-6 p-4 md:p-7">
-    <div><h1 className="text-2xl font-semibold tracking-tight">Finance control center</h1><p className="text-sm text-muted-foreground">Assessments, controlled collections, approvals, closeout, receipt accountability, and reporting.</p></div>
+  return <div className="app-page flex flex-col gap-6">
+    <div><h1 className="app-page-title">Finance control center</h1><p className="app-page-description">Assessments, controlled collections, approvals, closeout, receipt accountability, and reporting.</p></div>
     <Tabs defaultValue="dashboard" className="flex flex-col gap-5">
-      <TabsList className="h-auto w-full justify-start overflow-x-auto"><TabsTrigger value="dashboard">Dashboard</TabsTrigger><TabsTrigger value="assessments"><WalletCards /> Assessments</TabsTrigger>{canApprove ? <TabsTrigger value="approvals">Approvals</TabsTrigger> : null}{can("FINANCE_SESSION_OPERATE") || can("FINANCE_SESSION_APPROVE") ? <TabsTrigger value="sessions">Cashier sessions</TabsTrigger> : null}{canManageFees ? <TabsTrigger value="fees"><Calculator /> Fee setup</TabsTrigger> : null}{can("FINANCE_RECEIPT_MANAGE") ? <TabsTrigger value="receipts">Receipt series</TabsTrigger> : null}{can("FINANCE_REPORT") ? <TabsTrigger value="reports">Reports</TabsTrigger> : null}</TabsList>
+      <TabsList><TabsTrigger value="dashboard">Dashboard</TabsTrigger><TabsTrigger value="assessments">Assessments</TabsTrigger>{canApprove ? <TabsTrigger value="approvals">Approvals</TabsTrigger> : null}{can("FINANCE_SESSION_OPERATE") || can("FINANCE_SESSION_APPROVE") ? <TabsTrigger value="sessions">Cashier sessions</TabsTrigger> : null}{canManageFees ? <TabsTrigger value="fees">Fee setup</TabsTrigger> : null}{can("FINANCE_RECEIPT_MANAGE") ? <TabsTrigger value="receipts">Receipt series</TabsTrigger> : null}{can("FINANCE_REPORT") ? <TabsTrigger value="reports">Reports</TabsTrigger> : null}</TabsList>
       <TabsContent value="dashboard"><FinanceDashboardWorkspace /></TabsContent>
       <TabsContent value="assessments"><AssessmentsWorkspace canPay={canPay} /></TabsContent>
       {canApprove ? <TabsContent value="approvals"><ApprovalQueueWorkspace /></TabsContent> : null}

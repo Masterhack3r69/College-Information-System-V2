@@ -1,5 +1,28 @@
 # Change Log
 
+## 2026-07-24
+
+### Added
+
+- Semantic success, warning, information, and surface tokens; reusable page layout primitives; and shared Card/Native Select components.
+- [[Frontend Design System]] as the visual and responsive implementation contract for all three portals.
+
+### Changed
+
+- Standardized typography, spacing, buttons, inputs, selects, tables, tabs, dialogs, cards, badges, status colors, page gutters, and mobile overflow behavior across the frontend.
+- Unified page and workspace tabs on the shared icon-free line treatment across administrative, faculty, and student surfaces.
+- Unified Admin, Faculty, and Student shells on a 15 rem collapsible sidebar and 72 px sticky header; grouped administrative navigation by workflow without changing permissions or routes.
+- Refined the Students workspace and Create Student Record dialog against generated desktop references and a 375 px browser pass.
+
+### Fixed
+
+- Removed hard-coded JSX palette utilities, prevented dialog-level horizontal overflow, and stopped mobile student-form tabs from collapsing into unreadable labels.
+- Removed the mismatched segmented Finance tabs, outlined Users & Accounts active tab, scheduling tab icons, and page-specific tab layout overrides.
+
+### Documentation
+
+- Added [[Frontend Design System]] and updated [[Frontend Structure]], [[Faculty Portal]], [[Student Portal]], [[In Progress]], [[Known Issues]], and [[MVP Dashboard]].
+
 ## 2026-07-22
 
 ### Added

@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The College Student Information System is a working full-stack MVP under active development. [[Users and Accounts]] is operational through PostgreSQL Flyway V23 with protected delegated administration, canonical linked identities, generated temporary credentials, persistent login protection, hashed stable sessions, and immediate revocation. [[Scheduling]] remains operational through V22; Finance modernization through V17; enrollment and [[Academic Exceptions]] through V20. The clean backend suite passes 108 tests with four local Testcontainers skips, direct Docker upgraded the persisted V20 database through V23, the frontend production build and targeted lint pass, and six focused account-security Playwright flows pass.
+The College Student Information System is a working full-stack MVP under active development. [[Users and Accounts]] is operational through PostgreSQL Flyway V23 with protected delegated administration, canonical linked identities, generated temporary credentials, persistent login protection, hashed stable sessions, and immediate revocation. [[Scheduling]] remains operational through V22; Finance modernization through V17; enrollment and [[Academic Exceptions]] through V20. The clean backend suite passes 108 tests with four local Testcontainers skips, direct Docker upgraded the persisted V20 database through V23, and the frontend now uses the shared [[Frontend Design System]] across administrative, faculty, and student portals, including consistent icon-free page tabs. Production build, targeted changed-file lint, focused browser flows, and responsive Students/modal QA pass.
 
 ## Current Development Focus
 
@@ -15,6 +15,7 @@ The College Student Information System is a working full-stack MVP under active 
 - Harden deployment, secrets, file storage, and operational setup.
 - Replace generic faculty navigation redirects with dedicated attendance, content, and report views where needed.
 - Address frontend bundle size and stale project documentation.
+- Continue migrating legacy native selects and isolated page composition to [[Frontend Design System]] primitives when those workflows are touched.
 
 ## Working Modules
 

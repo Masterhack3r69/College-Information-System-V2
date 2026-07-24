@@ -158,10 +158,10 @@ export function ProgramsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-[#0b1f3a]">Programs</h2>
+          <h2 className="text-xl font-semibold text-foreground">Programs</h2>
           <p className="text-sm text-muted-foreground">Manage academic programs and degree offerings.</p>
         </div>
-        <Button onClick={openCreateModal} className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
+        <Button onClick={openCreateModal} className="bg-primary text-white hover:bg-primary/90">
           <Plus className="mr-2 h-4 w-4" /> New Program
         </Button>
       </div>
@@ -224,8 +224,8 @@ export function ProgramsTab() {
                       className={cn(
                         "inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold",
                         item.status === "ACTIVE"
-                          ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20"
-                          : "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
+                          ? "bg-success text-success-foreground ring-1 ring-inset ring-success-foreground/20"
+                          : "bg-destructive/10 text-destructive ring-1 ring-inset ring-destructive/20"
                       )}
                     >
                       {item.status === "ACTIVE" ? "Active" : "Inactive"}
@@ -233,7 +233,7 @@ export function ProgramsTab() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEditModal(item)}>
-                      <Edit className="h-4 w-4 text-[#0b1f3a]" />
+                      <Edit className="h-4 w-4 text-foreground" />
                       <span className="sr-only">Edit</span>
                     </Button>
                   </TableCell>
@@ -405,7 +405,7 @@ export function ProgramsTab() {
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90" disabled={isSubmitting}>
+              <Button type="submit" className="bg-primary text-white hover:bg-primary/90" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingItem ? "Save Changes" : "Create Program"}
               </Button>

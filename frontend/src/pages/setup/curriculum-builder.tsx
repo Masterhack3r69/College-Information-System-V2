@@ -173,12 +173,12 @@ export function CurriculumBuilder() {
 
   if (error || !data) {
     return (
-      <div className="mx-auto max-w-7xl p-4 md:p-7 text-center">
+      <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 text-center">
         <h2 className="text-xl font-semibold text-destructive">Error Loading Curriculum</h2>
         <p className="text-sm text-muted-foreground mt-2">
           {error instanceof Error ? error.message : "The requested curriculum could not be found or loaded."}
         </p>
-        <Button asChild className="mt-4 bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
+        <Button asChild className="mt-4 bg-primary text-white hover:bg-primary/90">
           <Link to="/admin/setup/curricula">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Curricula
           </Link>
@@ -296,15 +296,15 @@ export function CurriculumBuilder() {
   )
 
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-7 space-y-6">
+    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-md bg-[#0d2b4d] text-white">
+          <div className="grid size-10 place-items-center rounded-md bg-primary text-white">
             <BookOpen className="size-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-[#0b1f3a]">{curriculum.curriculumName}</h1>
+            <h1 className="text-2xl font-semibold text-foreground">{curriculum.curriculumName}</h1>
             <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>Code: <span className="font-semibold text-foreground">{curriculum.curriculumCode}</span></span>
               <span>&bull;</span>
@@ -325,17 +325,17 @@ export function CurriculumBuilder() {
           <span
             className={cn(
               "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset",
-              curriculum.status === "ACTIVE" && "bg-green-50 text-green-700 ring-green-600/20",
-              curriculum.status === "DRAFT" && "bg-amber-50 text-amber-700 ring-amber-600/20",
-              curriculum.status === "INACTIVE" && "bg-red-50 text-red-700 ring-red-600/20",
-              curriculum.status === "ARCHIVED" && "bg-gray-50 text-gray-700 ring-gray-600/20"
+              curriculum.status === "ACTIVE" && "bg-success text-success-foreground ring-success-foreground/20",
+              curriculum.status === "DRAFT" && "bg-warning text-warning-foreground ring-warning-foreground/20",
+              curriculum.status === "INACTIVE" && "bg-destructive/10 text-destructive ring-destructive/20",
+              curriculum.status === "ARCHIVED" && "bg-muted text-muted-foreground ring-muted-foreground/20"
             )}
           >
             {curriculum.status.charAt(0) + curriculum.status.slice(1).toLowerCase()}
           </span>
           <Button
             onClick={() => handleAddCourse(1, "FIRST_SEMESTER")}
-            className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90"
+            className="bg-primary text-white hover:bg-primary/90"
           >
             <Plus className="mr-1.5 h-4 w-4" /> Add Course
           </Button>
@@ -359,7 +359,7 @@ export function CurriculumBuilder() {
             </p>
             <Button
               onClick={() => handleAddCourse(1, "FIRST_SEMESTER")}
-              className="mt-4 bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90"
+              className="mt-4 bg-primary text-white hover:bg-primary/90"
             >
               <Plus className="mr-1.5 h-4 w-4" /> Add First Course
             </Button>
@@ -370,10 +370,10 @@ export function CurriculumBuilder() {
             const semesterName = mapSemester(term.semester)
 
             return (
-              <div key={index} className="bg-white rounded-xl border border-muted p-5 shadow-xs space-y-4">
+              <div key={index} className="bg-background rounded-lg border border-muted p-5 shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-muted">
                   <div>
-                    <h3 className="text-lg font-bold text-[#0b1f3a]">
+                    <h3 className="text-lg font-bold text-foreground">
                       {yearName} - {semesterName}
                     </h3>
                     <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 mt-1">
@@ -384,7 +384,7 @@ export function CurriculumBuilder() {
                   </div>
                   <Button
                     onClick={() => handleAddCourse(term.yearLevel, term.semester)}
-                    className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90 self-start"
+                    className="bg-primary text-white hover:bg-primary/90 self-start"
                   >
                     <Plus className="mr-1.5 h-4 w-4" /> Add Course
                   </Button>
@@ -417,7 +417,7 @@ export function CurriculumBuilder() {
                           .sort((a, b) => a.sortOrder - b.sortOrder)
                           .map((course) => (
                             <TableRow key={course.id}>
-                              <TableCell className="font-semibold text-[#0b1f3a]">{course.courseCode}</TableCell>
+                              <TableCell className="font-semibold text-foreground">{course.courseCode}</TableCell>
                               <TableCell>{course.courseTitle}</TableCell>
                               <TableCell>
                                 {course.lectureHoursPerWeek} / {course.laboratoryHoursPerWeek} hrs/week
@@ -429,7 +429,7 @@ export function CurriculumBuilder() {
                                     {course.prerequisites.map((p) => (
                                       <span
                                         key={p.id}
-                                        className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10"
+                                        className="inline-flex items-center rounded-md bg-info px-2 py-1 text-xs font-medium text-info-foreground ring-1 ring-inset ring-info-foreground/10"
                                       >
                                         {p.courseCode}
                                       </span>
@@ -445,7 +445,7 @@ export function CurriculumBuilder() {
                                     {course.corequisites.map((c) => (
                                       <span
                                         key={c.id}
-                                        className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10"
+                                        className="inline-flex items-center rounded-md bg-info px-2 py-1 text-xs font-medium text-info-foreground ring-1 ring-inset ring-info-foreground/10"
                                       >
                                         {c.courseCode}
                                       </span>
@@ -459,9 +459,9 @@ export function CurriculumBuilder() {
                                 <span
                                   className={cn(
                                     "inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset",
-                                    course.requiredStatus === "REQUIRED" && "bg-green-50 text-green-700 ring-green-600/20",
-                                    course.requiredStatus === "OPTIONAL" && "bg-yellow-50 text-yellow-800 ring-yellow-600/20",
-                                    course.requiredStatus === "ELECTIVE" && "bg-blue-50 text-blue-700 ring-blue-600/20"
+                                    course.requiredStatus === "REQUIRED" && "bg-success text-success-foreground ring-success-foreground/20",
+                                    course.requiredStatus === "OPTIONAL" && "bg-warning text-warning-foreground ring-warning-foreground/20",
+                                    course.requiredStatus === "ELECTIVE" && "bg-info text-info-foreground ring-info-foreground/20"
                                   )}
                                 >
                                   {course.requiredStatus.charAt(0) + course.requiredStatus.slice(1).toLowerCase()}
@@ -706,7 +706,7 @@ export function CurriculumBuilder() {
                     className="pl-8 h-9"
                   />
                 </div>
-                <div className="max-h-[160px] overflow-y-auto border border-muted rounded-md p-2 space-y-1.5 bg-slate-50/50">
+                <div className="max-h-[160px] overflow-y-auto border border-muted rounded-md p-2 space-y-1.5 bg-surface">
                   {courses
                     .filter(
                       (c) =>
@@ -719,7 +719,7 @@ export function CurriculumBuilder() {
                       return (
                         <label
                           key={c.id}
-                          className="flex items-center gap-2 text-xs p-1.5 hover:bg-white border border-transparent hover:border-muted rounded-md cursor-pointer transition-colors"
+                          className="flex items-center gap-2 text-xs p-1.5 hover:bg-background border border-transparent hover:border-muted rounded-md cursor-pointer transition-colors"
                         >
                           <input
                             type="checkbox"
@@ -734,7 +734,7 @@ export function CurriculumBuilder() {
                                 )
                               }
                             }}
-                            className="rounded border-muted-foreground/30 text-[#0b1f3a] focus:ring-[#0b1f3a] size-3.5"
+                            className="rounded border-muted-foreground/30 text-foreground focus:ring-primary size-3.5"
                           />
                           <span className="truncate">
                             <strong className="text-foreground font-semibold">{c.courseCode}</strong> &ndash; {c.courseTitle}
@@ -767,7 +767,7 @@ export function CurriculumBuilder() {
                     className="pl-8 h-9"
                   />
                 </div>
-                <div className="max-h-[160px] overflow-y-auto border border-muted rounded-md p-2 space-y-1.5 bg-slate-50/50">
+                <div className="max-h-[160px] overflow-y-auto border border-muted rounded-md p-2 space-y-1.5 bg-surface">
                   {courses
                     .filter(
                       (c) =>
@@ -780,7 +780,7 @@ export function CurriculumBuilder() {
                       return (
                         <label
                           key={c.id}
-                          className="flex items-center gap-2 text-xs p-1.5 hover:bg-white border border-transparent hover:border-muted rounded-md cursor-pointer transition-colors"
+                          className="flex items-center gap-2 text-xs p-1.5 hover:bg-background border border-transparent hover:border-muted rounded-md cursor-pointer transition-colors"
                         >
                           <input
                             type="checkbox"
@@ -795,7 +795,7 @@ export function CurriculumBuilder() {
                                 )
                               }
                             }}
-                            className="rounded border-muted-foreground/30 text-[#0b1f3a] focus:ring-[#0b1f3a] size-3.5"
+                            className="rounded border-muted-foreground/30 text-foreground focus:ring-primary size-3.5"
                           />
                           <span className="truncate">
                             <strong className="text-foreground font-semibold">{c.courseCode}</strong> &ndash; {c.courseTitle}
@@ -829,7 +829,7 @@ export function CurriculumBuilder() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90"
+                className="bg-primary text-white hover:bg-primary/90"
               >
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingCourse ? "Save Changes" : "Assign Course"}

@@ -25,6 +25,14 @@
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    --color-success-foreground: var(--success-foreground);
+    --color-success: var(--success);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning: var(--warning);
+    --color-info-foreground: var(--info-foreground);
+    --color-info: var(--info);
+    --color-surface-foreground: var(--surface-foreground);
+    --color-surface: var(--surface);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
     --color-muted-foreground: var(--muted-foreground);
@@ -55,32 +63,40 @@
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.52 0.2 255);
+    --primary: oklch(0.29 0.085 253);
     --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.965 0.008 255);
+    --secondary-foreground: oklch(0.29 0.04 253);
+    --muted: oklch(0.968 0.006 255);
+    --muted-foreground: oklch(0.49 0.025 255);
+    --accent: oklch(0.94 0.022 253);
+    --accent-foreground: oklch(0.32 0.075 253);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.52 0.2 255);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    --success: oklch(0.955 0.035 150);
+    --success-foreground: oklch(0.36 0.1 148);
+    --warning: oklch(0.965 0.045 84);
+    --warning-foreground: oklch(0.43 0.105 55);
+    --info: oklch(0.95 0.03 250);
+    --info-foreground: oklch(0.36 0.11 253);
+    --surface: oklch(0.985 0.004 255);
+    --surface-foreground: oklch(0.25 0.035 253);
+    --border: oklch(0.9 0.012 255);
+    --input: oklch(0.88 0.014 255);
+    --ring: oklch(0.53 0.17 254);
+    --chart-1: oklch(0.53 0.17 254);
+    --chart-2: oklch(0.62 0.12 190);
+    --chart-3: oklch(0.68 0.14 145);
+    --chart-4: oklch(0.76 0.14 80);
+    --chart-5: oklch(0.58 0.16 25);
     --radius: 0.5rem;
-    --sidebar: oklch(0.985 0.006 255);
-    --sidebar-foreground: oklch(0.25 0.04 255);
-    --sidebar-primary: oklch(0.52 0.2 255);
+    --sidebar: oklch(0.975 0.009 255);
+    --sidebar-foreground: oklch(0.29 0.045 253);
+    --sidebar-primary: oklch(0.29 0.085 253);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.95 0.02 255);
-    --sidebar-accent-foreground: oklch(0.35 0.12 255);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --sidebar-accent: oklch(0.93 0.028 253);
+    --sidebar-accent-foreground: oklch(0.34 0.1 253);
+    --sidebar-border: oklch(0.9 0.012 255);
+    --sidebar-ring: oklch(0.53 0.17 254);
 }
 
 .dark {
@@ -99,6 +115,14 @@
     --accent: oklch(0.269 0 0);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
+    --success: oklch(0.31 0.055 150);
+    --success-foreground: oklch(0.86 0.11 148);
+    --warning: oklch(0.34 0.055 65);
+    --warning-foreground: oklch(0.88 0.12 82);
+    --info: oklch(0.31 0.055 253);
+    --info-foreground: oklch(0.84 0.09 250);
+    --surface: oklch(0.185 0.012 255);
+    --surface-foreground: oklch(0.94 0.008 255);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
@@ -123,10 +147,43 @@
     }
   body {
     @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     }
   html {
     @apply font-sans;
     }
+  ::selection {
+    @apply bg-primary/15 text-foreground;
+    }
+  select:not([data-slot]) {
+    @apply h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50;
+    }
 }
 
-button, [role="button"] { cursor: pointer; }
+@layer components {
+  .app-page {
+    @apply mx-auto w-full max-w-[1440px] p-4 sm:p-6 lg:p-8;
+  }
+
+  .app-page-header {
+    @apply flex flex-col justify-between gap-4 sm:flex-row sm:items-end;
+  }
+
+  .app-page-title {
+    @apply text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem];
+  }
+
+  .app-page-description {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .app-toolbar {
+    @apply flex flex-col gap-3 rounded-lg border bg-surface p-3 sm:flex-row sm:flex-wrap sm:items-center;
+  }
+
+  .app-surface {
+    @apply overflow-hidden rounded-lg border bg-card text-card-foreground;
+  }
+}
+
+button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }

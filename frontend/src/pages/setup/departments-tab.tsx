@@ -144,10 +144,10 @@ export function DepartmentsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-[#0b1f3a]">Departments</h2>
+          <h2 className="text-xl font-semibold text-foreground">Departments</h2>
           <p className="text-sm text-muted-foreground">Manage college departments and their deans.</p>
         </div>
-        <Button onClick={openCreateModal} className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90">
+        <Button onClick={openCreateModal} className="bg-primary text-white hover:bg-primary/90">
           <Plus className="mr-2 h-4 w-4" /> New Department
         </Button>
       </div>
@@ -207,7 +207,7 @@ export function DepartmentsTab() {
                         disabled={statusMutation.isPending}
                         className={cn(
                           "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
-                          item.status === "ACTIVE" ? "bg-[#0b1f3a]" : "bg-input"
+                          item.status === "ACTIVE" ? "bg-primary" : "bg-input"
                         )}
                       >
                         <span
@@ -224,7 +224,7 @@ export function DepartmentsTab() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEditModal(item)}>
-                      <Edit className="h-4 w-4 text-[#0b1f3a]" />
+                      <Edit className="h-4 w-4 text-foreground" />
                       <span className="sr-only">Edit</span>
                     </Button>
                   </TableCell>
@@ -329,7 +329,7 @@ export function DepartmentsTab() {
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-[#0b1f3a] text-white hover:bg-[#0b1f3a]/90" disabled={isSubmitting}>
+              <Button type="submit" className="bg-primary text-white hover:bg-primary/90" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingItem ? "Save Changes" : "Create Department"}
               </Button>

@@ -44,8 +44,8 @@ function LocationCombobox({
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-[#0b1f3a]">
-        {label} {required && <span className="text-red-500">*</span>}
+      <Label className="text-sm font-medium text-foreground">
+        {label} {required && <span className="text-destructive">*</span>}
       </Label>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -208,7 +208,7 @@ export function CascadingAddressSelector({
     <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2", compact ? "" : "lg:grid-cols-4")}>
       {/* House / Street / Purok */}
       <div className={cn("space-y-1.5", compact ? "sm:col-span-2" : "sm:col-span-2 lg:col-span-3")}>
-        <Label className="text-sm font-medium text-[#0b1f3a]">House No. / Street / Purok</Label>
+        <Label className="text-sm font-medium text-foreground">House No. / Street / Purok</Label>
         <Input
           placeholder="e.g. 123 Main St., Purok 5"
           value={values.houseStreet}
@@ -219,7 +219,7 @@ export function CascadingAddressSelector({
 
       {/* ZIP Code */}
       <div className="space-y-1.5">
-        <Label className="text-sm font-medium text-[#0b1f3a]">ZIP Code</Label>
+        <Label className="text-sm font-medium text-foreground">ZIP Code</Label>
         <Input
           placeholder="e.g. 4114"
           value={values.zipCode}

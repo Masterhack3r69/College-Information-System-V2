@@ -146,6 +146,32 @@ test.describe("Scheduling operational workspace", () => {
     await expect(page.getByRole("button", { name: "Revise CS101" })).toHaveCount(0)
   })
 
+  test("Administrative tabs stay icon-free and contained on mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await mockAdministrativeScheduling(page, {
+      id: "registrar-mobile", username: "registrar.mobile", email: "registrar.mobile@example.edu", fullName: "Registrar Mobile",
+      roles: ["REGISTRAR"], permissions: ["SCHEDULE_VIEW", "SCHEDULE_MANAGE", "SCHEDULE_REVISE"],
+      availablePortals: ["ADMIN"], defaultPortal: "ADMIN", passwordChangeRequired: false,
+    })
+
+    await page.goto("/admin/schedules")
+    const tablist = page.getByRole("tablist")
+    await expect(tablist.getByRole("tab")).toHaveCount(5)
+    await expect(tablist.locator("svg")).toHaveCount(0)
+    const dimensions = await tablist.evaluate(element => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      overflowX: getComputedStyle(element).overflowX,
+    }))
+    expect(dimensions.overflowX).toBe("auto")
+    expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(() => document.documentElement.clientWidth))
+
+    await page.getByRole("tab", { name: "History" }).click()
+    await expect(page.getByRole("tab", { name: "History" })).toHaveAttribute("aria-selected", "true")
+    await expect(page.getByRole("tabpanel", { name: "History" })).toContainText("Select an offering")
+  })
+
   test("Faculty sees assigned Sunday meetings and recent changes on mobile", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 })
     await authenticated(page, {

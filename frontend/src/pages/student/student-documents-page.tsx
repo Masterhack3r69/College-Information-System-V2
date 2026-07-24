@@ -36,12 +36,12 @@ export default function StudentDocumentsPage() {
     toast.success("Request submitted")
   }
   return (
-    <div className="mx-auto max-w-[1180px] p-5 md:p-8">
-      <h1 className="flex items-center gap-3 text-3xl font-semibold text-[#092f66]">
+    <div className="mx-auto max-w-[1180px] p-4 sm:p-6 lg:p-8">
+      <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">
         <FileText />
         Documents
       </h1>
-      <p className="mt-2 text-slate-600">
+      <p className="mt-2 text-muted-foreground">
         Download student forms and track document or clearance requests.
       </p>
       <div className="mt-7 grid gap-6 lg:grid-cols-2">
@@ -99,7 +99,7 @@ export default function StudentDocumentsPage() {
               >
                 <div>
                   <p className="font-medium">{x.title}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {x.description ?? x.filename}
                   </p>
                 </div>
@@ -135,7 +135,7 @@ export default function StudentDocumentsPage() {
                   </p>
                   <Badge variant="outline">{x.status}</Badge>
                 </div>
-                <p className="mt-1 text-sm text-slate-500">{x.purpose}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{x.purpose}</p>
                 {x.staffComment ? (
                   <p className="mt-2 text-sm">Registrar: {x.staffComment}</p>
                 ) : null}

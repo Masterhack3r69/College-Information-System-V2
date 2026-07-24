@@ -43,15 +43,15 @@ export default function StudentPasswordPage() {
     }
   }
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
-      <section className="w-full max-w-md rounded-xl border bg-white p-7 shadow-sm">
-        <div className="grid size-12 place-items-center rounded-md border-2 border-[#0c3872] text-[#0c3872]">
+    <main className="grid min-h-screen place-items-center bg-surface p-5">
+      <section className="w-full max-w-md rounded-lg border bg-background p-7 shadow-sm">
+        <div className="grid size-12 place-items-center rounded-md border-2 border-primary text-primary">
           <GraduationCap />
         </div>
-        <h1 className="mt-6 text-2xl font-semibold text-[#092f66]">
+        <h1 className="mt-6 text-2xl font-semibold text-foreground">
           Secure your student account
         </h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-muted-foreground">
           You must replace the initial student-number password before using the
           portal.
         </p>
